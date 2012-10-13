@@ -40,6 +40,3 @@ fool
 如何调试运行内核
 	>  cd fool/
 	>  ./debug 或 bochs
-
-
-
