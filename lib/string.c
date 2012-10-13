@@ -1,0 +1,148 @@
+/*
+ *	string.c
+ *	bedreamer@163.com
+ */
+#include <stddef.h>
+
+size_t memcpy(void *des,const void *src,size_t cnt)
+{
+	auto void* tmp = des;
+	while (cnt--)
+		*(byte*)des++ = *(byte*)src++;
+	return (size_t)des-(size_t)tmp;
+}
+
+size_t memmove(void * des,const void * src,size_t cnt)
+{
+	auto void *tmp = des;
+	if (des<src){
+		while (cnt--)
+			*(byte*)des ++ = *(byte*)src++;
+		return (size_t)des - (size_t)tmp;
+	}else if (des>src){
+		while (cnt--)
+			*(byte*)(des+cnt-1) = *(byte*)(src+cnt-1);
+		return (size_t)tmp - (size_t)src;
+	}else return 0;
+}
+
+size_t memset(void * des,int tom,size_t cnt)
+{
+	auto void *tmp = des;
+	while (cnt--)
+		*(byte*)des++ = (byte)tom;
+	return (size_t)des - (size_t)tmp;
+}
+
+size_t strcat(char * des,const char * src)
+{
+	auto char *tmp;
+	while (*des++);
+	tmp = des;
+	while (*src)
+		*des++ = *src ++;
+	return (size_t)des-(size_t)tmp;
+}
+
+int strcmp(const char * des,const char * src)
+{
+	while ((*des)&&(*src)&&0==*des-(*src))
+		des ++,src++;
+	return *des - *src;
+}
+
+size_t strcpy(char * des,const char * src)
+{
+	auto char *tmp = des;
+	while (*src)
+		*des ++ = *src++;
+	return (size_t)des - (size_t)tmp;
+}
+
+size_t strlen(const char* des)
+{
+	auto const char *tmp =des;
+	while (*des++);
+	return (size_t)des-(size_t)tmp;
+}
+
+int strncmp(const char * des,const char * src,size_t max_)
+{
+	while ((*des)&&(*src)&&0==*des-(*src)&&max_--)
+		des ++,src++;
+	return *des - *src;
+}
+
+size_t strncpy(char *des,const char *src,size_t max_)
+{
+	auto const char *tmp = des;
+	while (*src&&max_--)
+		*des++=*src++;
+	return (size_t)des-(size_t)tmp;
+}
+
+size_t strnlen(const char *des,size_t max_)
+{
+	auto char *tmp = des;
+	while (*des&& max_--)
+		des ++;
+	return (size_t)des-(size_t)tmp;
+}
+
+const char * strstr(const char * des,const char * src)
+{
+	auto const char *tmpd = NULL,*tmps = src;
+	while (*des&&*src){
+		if (*des++ == *tmps++){
+			tmpd = tmps-1;
+			while (*tmps && *des ++ == *tmps ++);
+			if (NULL == tmps )
+				return tmpd;
+			else{
+				tmps = src;
+				break;
+			}
+		}
+	}
+	return NULL;
+}
+
+size_t tolower(char * des)
+{
+	auto char* tmp = des;
+	while (*des){
+		*des = *des >= 'A' && *des < 'Z' ? *des + 'A' - 'a' : *des;
+		des ++;
+	}
+	return (size_t)des - (size_t)tmp;
+}
+
+size_t tonlower(char * des,size_t max_)
+{
+	auto char* tmp = des;
+	while (*des&&max_--){
+		*des = *des >= 'A' && *des < 'Z' ? *des + 'A' - 'a' : *des;
+		des ++;
+	}
+	return (size_t)des - (size_t)tmp;
+}
+
+size_t tonupper(char * des,size_t max_)
+{
+	auto char* tmp = des;
+	while (*des&&max_--){
+		*des = *des >= 'a' && *des < 'z' ? *des + 'a' - 'A' : *des;
+		des ++;
+	}
+	return (size_t)des - (size_t)tmp;
+}
+
+size_t toupper(char * des)
+{
+	auto char* tmp = des;
+	while (*des){
+		*des = *des >= 'a' && *des < 'z' ? *des + 'a' - 'A' : *des;
+		des ++;
+	}
+	return (size_t)des - (size_t)tmp;
+}

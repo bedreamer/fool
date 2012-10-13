@@ -1,0 +1,81 @@
+#!/bin/bash
+FOOLROOT=/root/fool
+
+# $1=dir $2=obj
+function domake(){
+	cd $1
+	make clean
+	make
+	if [ -e $2 ] ;
+	then
+		echo "check file $2 OK..."
+	fi
+}
+
+# $1=dir $2=obj
+function check(){
+	if [ -e $2 ];
+	then
+		echo "check file $2 OK..."
+	else
+		domake $1 $2
+		echo "check file $2 FAILE..."
+	fi
+}
+
+cd $FOOLROOT
+check arch-i386 arch-i386/BOOTSECTOR
+check arch-i386 arch-i386/FOOLLDR
+rm mm/kmalloc.o mm/page.o
+check mm mm/kmalloc.o
+check mm mm/page.o
+check lib lib/libcrt.a
+echo "check kernel object..."
+cd drivers
+$PWD/mkdrivers
+cd ../kernel
+
+for file in ioport.o _start.o kmain.o fool.o int.o kio.o kroute.o printk.o schedu.o 8259a.o 8042.o device.o signal.o module.o 
+	do
+		if [ -e $PWD/$file ];
+		then
+			echo "check kernel object file $PWD/$file OK..."
+		else
+			make $file
+			if [ -e $PWD/$file ];
+			then
+				echo "check kernel object file $PWD/$file OK..."
+			else
+				echo "check kernel object file $PWD/$file FAILE..."
+				exit 0
+			fi
+		fi
+	done
+
+make alldone
+
+	if [ -e $FOOLROOT/fool.img ];
+	then
+		if [ -e "$FOOLROOT/KFOOL" ] ;
+		then
+			echo "check kernel file $FOOLROOT/KFOOL...yes"
+			mount $FOOLROOT/fool.img -o loop $FOOLROOT/.tmp
+			sleep 1
+			rm $FOOLROOT/.tmp/KFOOL
+			cp $FOOLROOT/KFOOL $FOOLROOT/.tmp/
+			sleep 1
+			echo copy kernel file done!
+			umount $FOOLROOT/.tmp
+		else
+			echo "check kernel file $FOOLROOT/arch-i386/KFOOL...no"
+		fi
+	else
+		$FOOLROOT/mkimg
+	fi
+
+echo "build done!"
+
+
+
+
+
