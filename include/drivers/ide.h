@@ -53,7 +53,8 @@
 /*register for write*/
 #define REG_FOR_WRITE	0x00CC
 /* IDE contral ioport */
-struct ide_ctl_ioport {
+struct ide_ctl_ioport 
+{
 	int  reg_indentify;
 	_u16 reg_data;
 	union{
@@ -98,7 +99,8 @@ struct ide_ctl_ioport {
  *@ide_port_r: device read contral port.
  *@ide_port_w: device write contral port.
  */
-struct ide_device_status {
+struct ide_device_status 
+{
 	size_t devnum;
 	size_t lba_start;
 	size_t lba_end;
@@ -109,7 +111,8 @@ struct ide_device_status {
 };
 
 /*hard disk command struct.*/
-struct ide_cmd_struct {
+struct ide_cmd_struct 
+{
 	_u8 reg_features;
 	_u8 reg_count;
 	_u8 reg_lba_low;
@@ -129,7 +132,7 @@ extern void ide_init(void);
 #define IDE_GET_INT		0x00FF
 #define IDE_WAIT_INT	0xFF00
 
-#define IDE_DEBUG
+//#define IDE_DEBUG
 
 #endif /*_HD_*/
 

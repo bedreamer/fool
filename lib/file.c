@@ -65,6 +65,7 @@ int gets(char *ptr)
 	for (;;len++)
 	{
 		ch = getchar();
+		putchar((char)ch);
 		if (3 == ch && len > 0)  /*收到回车*/
 		{
 			int i;
@@ -73,6 +74,7 @@ int gets(char *ptr)
 			for (i=0;i<len;i++)
 			{
 				*ptr ++ = p[i];
+				p[i] = '\0';
 			}
 			memset(stdin->io_base,0,1024);
 			stdin->io_ptr = stdin->io_base;

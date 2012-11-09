@@ -146,3 +146,122 @@ size_t toupper(char * des)
 	}
 	return (size_t)des - (size_t)tmp;
 }
+
+
+
+
+
+
+/*宽字符操作函数*/
+size_t wstrcat(wchar_t * des,const wchar_t * src)
+{
+	auto wchar_t *tmp;
+	while (*des++);
+	tmp = des;
+	while (*src)
+		*des++ = *src ++;
+	return (size_t)des-(size_t)tmp;
+}
+
+int wstrcmp(const wchar_t * des,const wchar_t * src)
+{
+	while ((*des)&&(*src)&&0==*des-(*src))
+		des ++,src++;
+	return *des - *src;
+}
+
+size_t wstrcpy(wchar_t * des,const wchar_t * src)
+{
+	auto wchar_t *tmp = des;
+	while (*src)
+		*des ++ = *src++;
+	return (size_t)des - (size_t)tmp;
+}
+
+size_t wstrlen(const wchar_t* des)
+{
+	auto const wchar_t *tmp =des;
+	while (*des++);
+	return (size_t)des-(size_t)tmp;
+}
+
+int wstrncmp(const wchar_t * des,const wchar_t * src,size_t max_)
+{
+	while ((*des)&&(*src)&&0==*des-(*src)&&max_--)
+		des ++,src++;
+	return *des - *src;
+}
+
+size_t wstrncpy(wchar_t *des,const wchar_t *src,size_t max_)
+{
+	auto const wchar_t *tmp = des;
+	while (*src&&max_--)
+		*des++=*src++;
+	return (size_t)des-(size_t)tmp;
+}
+
+size_t wstrnlen(const wchar_t *des,size_t max_)
+{
+	auto wchar_t *tmp = des;
+	while (*des&& max_--)
+		des ++;
+	return (size_t)des-(size_t)tmp;
+}
+
+const wchar_t * wstrstr(const wchar_t * des,const wchar_t * src)
+{
+	auto const wchar_t *tmpd = NULL,*tmps = src;
+	while (*des&&*src){
+		if (*des++ == *tmps++){
+			tmpd = tmps-1;
+			while (*tmps && *des ++ == *tmps ++);
+			if (NULL == tmps )
+				return tmpd;
+			else{
+				tmps = src;
+				break;
+			}
+		}
+	}
+	return NULL;
+}
+
+size_t wtolower(wchar_t * des)
+{
+	auto wchar_t* tmp = des;
+	while (*des){
+		*des = *des >= 'A' && *des < 'Z' ? *des + 'A' - 'a' : *des;
+		des ++;
+	}
+	return (size_t)des - (size_t)tmp;
+}
+
+size_t wtonlower(wchar_t * des,size_t max_)
+{
+	auto wchar_t* tmp = des;
+	while (*des&&max_--){
+		*des = *des >= 'A' && *des < 'Z' ? *des + 'A' - 'a' : *des;
+		des ++;
+	}
+	return (size_t)des - (size_t)tmp;
+}
+
+size_t wtonupper(wchar_t * des,size_t max_)
+{
+	auto wchar_t* tmp = des;
+	while (*des&&max_--){
+		*des = *des >= 'a' && *des < 'z' ? *des + 'a' - 'A' : *des;
+		des ++;
+	}
+	return (size_t)des - (size_t)tmp;
+}
+
+size_t wtoupper(wchar_t * des)
+{
+	auto wchar_t* tmp = des;
+	while (*des){
+		*des = *des >= 'a' && *des < 'z' ? *des + 'a' - 'A' : *des;
+		des ++;
+	}
+	return (size_t)des - (size_t)tmp;
+}

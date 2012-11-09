@@ -7,7 +7,7 @@
 #include <foolstd.h>
 
 
-int main(int argc,const char *argcv[])
+int main()
 {
 	int len,i=0;
 
@@ -21,6 +21,7 @@ int main(int argc,const char *argcv[])
 
 	while (1)
 	{
+		memset(buf,0,1024);
 		len=gets(buf);
 		printf("%s\n",buf);
 	}

@@ -31,7 +31,7 @@
 #define _8042CMD_SETALLREPEAT				0xF7/*将所有的键设为重复按键*/
 #define _8042CMD_SETALLPRESSORRELEASE		0xF8/*设置所有按键为按键/释放*/
 #define _8042CMD_SETALLPRESS				0xF9/*设置所有键为按键*/
-#define _8042CMD_SETALLREPEATPRESS		0xFA/*将所有的键设为重复按键/按键*/
+#define _8042CMD_SETALLREPEATPRESS			0xFA/*将所有的键设为重复按键/按键*/
 #define _8042CMD_SETONEREPEAT				0xFB/*将某个按键设为重复按键*/
 #define _8042CMD_SETKEYTRASLATE				0xFC/*将某个键设为按键/翻译*/
 #define _8042CMD_SETONLYPRESS				0xFD/*将某个键设为仅按键*/

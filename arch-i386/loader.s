@@ -10,8 +10,8 @@
 ;		+ KSYSTEM是一个tar压缩文件，包含一些内核在启动时需要的驱动等模块文件.
 ;	+ KFOOL   =====>  6000:0000 ~ 8000:FFFF		192K
 ; +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-%include "asm-i386/segdef.inc"
-%include "asm-i386/protectmode.inc"
+%include "asm-i386/segdef.i"
+%include "asm-i386/protectmode.i"
 org OFFSET_LDR_FILE_SECTOR	;
 jmp loader_start			; 9000:0000h
 %include "asm-i386/lib/floppy.s"

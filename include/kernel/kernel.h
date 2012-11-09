@@ -34,6 +34,11 @@
 #endif /*_BITS_*/
 
 typedef volatile unsigned int pid_t;
+typedef unsigned int dev_t;
+typedef unsigned short time_t;
+typedef unsigned short date_t;
+typedef unsigned int clust_t;
+typedef int offset_f;
 #define KERNEL_CR3		0x100	// 1M
 
 #include <kernel/printk.h>
@@ -63,8 +68,10 @@ typedef volatile unsigned int pid_t;
 // default kernel stack size.
 #define KSTACKSIZE 0x800
 
-#define catchme(param) kprintf("trace at functino:%s line %d,param:%s\n",__FUNCTION__,__LINE__,param);
-
 extern const char *fool_version;
+
+#	ifndef _KERNEL_
+	//#define _KERNEL_
+#	endif 
 
 #endif /*_KERNEL_INCLUDE_*/

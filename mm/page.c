@@ -10,35 +10,36 @@
  *	0x02000000 ~ .........	FREE						32M以上 
  */
 #include <kernel/kernel.h>
-#include <kernel/kmalloc.h>
 #include <kernel/fool.h>
 #include <kernel/schedu.h>
-#include <kernel/page.h>
+#include <kernel/mm.h>
 
 static size_t memsize=512*1024*1024;		/*系统总内存512M*/
 static size_t memreserved=32*1024*1024;	/*系统保留内存*/
 static char *pagemap=NULL;
 
-//#define PAGE_DEBUG
-
 /*启用分页机制*/
 void startpage()
 {
 	size_t i=0,d=0;
+
 	int *dir=(int*)(KERNEL_CR3<<12);
 	pagemap=(char*)kmalloc(memsize>>12);
 	memset(pagemap,0,memsize>>12);
 //	printk("Total memory size:\t%d KB,%dMB",memsize/1024,memsize/(1024*1024));
 //	printk("Total pages:\t%d pages",memsize/4096);
 //	printk("Reserved pages:\t%d pages",memsize/4096-memreserved/4096);
-	for (;i<memreserved/4096;i++){
+	for (;i<memreserved/4096;i++)
+	{
 		bitset(i,pagemap);
 	}
-	for (i=0,d=((KERNEL_CR3+1)<<12)|0x00000001;i<memsize/(4*1024*1024);i++){
+	for (i=0,d=((KERNEL_CR3+1)<<12)|0x00000001;i<memsize/(4*1024*1024);i++)
+	{
 		*dir++ = d;
 		d += 0x00001000;
 	}
-	for (i=0,dir=(int*)((KERNEL_CR3+1)<<12);i<memsize/4096;i++){
+	for (i=0,dir=(int*)((KERNEL_CR3+1)<<12);i<memsize/4096;i++)
+	{
 		*dir ++ = (i<<12)|0x00000001;
 	}
 	asm_cr3(KERNEL_CR3<<12);

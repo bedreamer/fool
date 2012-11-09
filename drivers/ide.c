@@ -9,20 +9,21 @@
 #include <kernel/kernel.h>
 #include <kernel/fool.h>
 #include <kernel/int.h>
-#include <kernel/device.h>
-#include <kernel/kio.h>
+#include <kernel/kmodel.h>
 #include <kernel/cache.h>
-#include <kernel/page.h>
+#include <kernel/mm.h>
 #include <drivers/ide.h>
 
-int    ide_open (struct kfile *,struct kinode *);
-int    ide_ioctl(struct kfile *,int,int);
-size_t ide_read (struct kfile *,_user_in_ void *,size_t);
-size_t ide_write(struct kfile *,_user_in_ const void *,size_t);
-size_t ide_seek (struct kfile *,size_t,int);
+int ide_open(struct file *,struct inode *);
+int ide_close(struct file *,struct inode *);
+int ide_read(struct file *,_user_out_ char *,offset_f,_user_out_ offset_f *,int cnt);
+int ide_write(struct file *,_user_in_ const char *,offset_f,_user_out_ offset_f *,int cnt);
 
-size_t ide_c_read(struct kinode *,_core_out_ void *,size_t offset,size_t size);
-size_t ide_c_write(struct kinode *,_core_in_ const void *,size_t offset,size_t size);
+int ide_kread(struct file *,_core_out_ char *,offset_f,_core_out_ offset_f *,int cnt);
+int ide_kwrite(struct file *,_core_in_ const char *,offset_f,_core_out_ offset_f *,int cnt);
+
+int ide_c_read(struct file *,_core_out_ char *,offset_f,_core_out_ offset_f *,int cnt);
+int ide_c_write(struct file *,_user_in_ const char *,offset_f,_user_out_ offset_f *,int cnt);
 
 /*port for primary device when read.*/
 struct ide_ctl_ioport ide_primary_r={
@@ -60,18 +61,18 @@ volatile static unsigned short ide1_intflg[2]={IDE_NO_INT};
 volatile static unsigned short ide_intflg=IDE_NO_INT;
 
 /*spin lock for IDE0 device.*/
-static spin_lock ide0_rwlck={._lck=SPIN_UNLOCKED};
+static struct spin_lock ide0_rwlck={._lck=SPIN_UNLOCKED};
 /*spin lock for IDE1 device.*/
-static spin_lock ide1_rwlck={._lck=SPIN_UNLOCKED};
+static struct spin_lock ide1_rwlck={._lck=SPIN_UNLOCKED};
 
 /*IDE0 read/write buffer*/
 _u8 ide0_rwbuffer[512]={0};
 /*lock of ide0_rwbuffer*/
-spin_lock ide0_buf_rwlck={._lck=SPIN_UNLOCKED};
+struct spin_lock ide0_buf_rwlck={._lck=SPIN_UNLOCKED};
 /*IDE1 read/write buffer*/
 _u8 ide1_rwbuffer[512]={0};
 /*lock of ide1_rwbuffer*/
-spin_lock ide1_buf_rwlck={._lck=SPIN_UNLOCKED};
+struct spin_lock ide1_buf_rwlck={._lck=SPIN_UNLOCKED};
 
 /*name of IDE device.@ command IDEC_IDENTIFY_PACKET.word 0*/
 const char *ide_packet_name[]={
@@ -109,10 +110,6 @@ const char *ide_packet_name[]={
 /*0x1F*/"Unknown or no device type"};
 /*used for IDE device partation.*/
 struct ide_device_status ide_dev[MAX_IDE_DEVICE]={{0}};
-/*IDE device driver interface.*/
-struct kfile_op ide_fop={.open=ide_open,.ioctl=ide_ioctl,
-	.read=ide_read,.write=ide_write,.seek=ide_seek,
-	.c_read=ide_c_read,.c_write=ide_c_write};
 
 /*for IDE0 device interrupt.*/
 void ide0_handle()
@@ -320,7 +317,7 @@ int ide_write_sct(const struct ide_device_status* pids,size_t lba,_core_in_ cons
 	}
 
 	// may use DMA later.
-	outputs(pids->ide_port_w->reg_data,ptr,SECTOR_SIZE);
+	outputs(pids->ide_port_w->reg_data,(_u32*)ptr,SECTOR_SIZE);
 
 	if (ide_wait_interrupt(pflg,IDE_MAX_IODELAY))
 		result = 1;
@@ -353,408 +350,51 @@ struct ide_device_status *ide_struct_alloc(size_t devnum)
 /*ide device partation scanner.*/
 void ide_device_scan_partation(struct ide_device_status *pd,size_t major,const char *devname)
 {
-	char buf[32]={0};
-	struct disk_mbr mbr;
-	int i,j;
-	struct kinode *pin=NULL;
-	struct ide_device_status * ppt=NULL;
-
-	if(ide_read_sct(pd,pd->lba_start,&mbr))
-	{
-		for (i=0,j=1;i<4;i++)
-		{
-			if (mbr.ptb[i].sctcnt>0) 
-			{
-				memset(buf,0,32);
-				sprintf(buf,"%s%d",devname,j++);
-#ifdef IDE_DEBUG
-				kprintf("\t\t+- %s FSID:%x %s\n",buf,mbr.ptb[i].pid,0x80==mbr.ptb[i].stats?"*":NULL);
-#endif // IDE_DEBUG
-				
-				ppt = ide_struct_alloc(MAKEDEVNUM(major,j));
-				if (NULL==ppt){
-#ifdef IDE_DEBUG
-					kprintf("FAILE @ide_struct_alloc");
-#endif // IDE_DEBUG
-					return;
-				}
-				pin = kinode_cache_alloc();
-				if (NULL==pin) {
-					printk("KINODE CACHE CRASHED!");
-					return;
-				}
-
-				if (IDE_PRIMARY_MASK&pd->ide_dev_mask) {
-					ppt->ide_port_r = &ide_primary_r;
-					ppt->ide_port_w = &ide_primary_w;
-				} else if (IDE_SECONDY_MASK&pd->ide_dev_mask) {
-					ppt->ide_port_r = &ide_secondy_r;
-					ppt->ide_port_w = &ide_secondy_w;
-				} else ; // can not be here.
-
-				ppt->ide_dev_mask = pd->ide_dev_mask;
-				ppt->devnum = MAKEDEVNUM(major,j);
-
-				convert_device_path(&(pin->i_filename),buf);
-
-				ppt->lba_start = mbr.ptb[i].slba;
-				ppt->lba_cnt = mbr.ptb[i].sctcnt;
-				ppt->lba_end = ppt->lba_start+ppt->lba_cnt;
-
-				pin->i_priva = ppt;
-				pin->i_avl.avl_data = pin->i_filename.p_filename;
-				spinlock_init(pin->f_lock);
-				pin->i_iflg = ITYPE_BLOCK_DEV;
-				pin->i_fop = &ide_fop;
-				pin->i_iop = NULL;
-				pin->kf_lst = NULL;
-				pin->r_cnt = 0;
-				pin->t_size = ppt->lba_cnt;
-
-				inode_addinto(pin);
-			}
-		}
-	} else kprintf("FAILE");
 }
 
 /*scan ide device.*/
 void ide_device_scan()
 {
-	const struct ide_ctl_ioport *ctlpt[]={&ide_primary_r,&ide_secondy_r};
-	struct ide_cmd_struct cmd;
-	const char *dev_name[]={"/dev/hda","/dev/hdb","/dev/hdc","/dev/hdd"};
-	volatile unsigned short *ppp[][2]={
-		{&ide0_intflg[0],&ide0_intflg[1]},
-		{&ide1_intflg[0],&ide1_intflg[1]}};
-	int i,j,index,result,conform=0,devcnt=0;
-	_u16 buffer[256];
-	size_t devsize;
-	struct kinode *pin=NULL;
-
-	memset(buffer,0,sizeof(buffer));
-	memset(&cmd,0,sizeof(struct ide_cmd_struct));
-
-	for (i=0;i<2;i++)
-	{
-#ifdef IDE_DEBUG
-		if (0==i) kprintf("IDE Primary:\n");
-		else kprintf("IDE Secondy:\n");
-#endif // IDE_DEBUG
-		for (j=0;j<2;j++)
-		{
-#ifdef IDE_DEBUG
-			if (0==j)
-				kprintf("\tMaster:");
-			else kprintf("\tSlave:");
-#endif // IDE_DEBUG
-			cmd.reg_device = MAKEDEV(0,j);
-			cmd.reg_cmd = IDEC_IDENTIFY_PACKET;
-			ide_exec_cmd(ctlpt[i],&cmd);
-			conform=0;
-			result=ide_wait_interrupt(ppp[i][j],1000);
-			if (result) 
-			{
-				inputs(ctlpt[i]->reg_data,(_u32*)buffer,SECTOR_SIZE);
-				index=(buffer[0]>>8)&0x1F;
-#ifdef IDE_DEBUG
-				kprintf("\t%s (%s) code: %x ",
-						ide_packet_name[index],
-						(buffer[0]&0x0080)?"Removable":"Unremovable",
-						index);
-				kprintf("[%s]\n",(buffer[0]&0xC000)?"ATA/API":"ATA");
-#endif // IDE_DEBUG
-				buffer[20] &= 0xFF00;
-				if (0xFFFF!=buffer[10]&&0x0000!=buffer[10]){
-#ifdef IDE_DEBUG
-					kprintf("\t\tDEVIC SN: %s\n",&buffer[10]);
-#endif // IDE_DEBUG
-					conform++;
-				}
-				buffer[47] &= 0xFF00;
-				if (0xFFFF!=buffer[27]&&0x0000!=buffer[27]){
-#ifdef IDE_DEBUG
-					kprintf("\t\tModel number: %s\n",&buffer[27]);
-#endif // IDE_DEBUG
-					conform++;
-				}
-				buffer[27] &= 0xFF00;
-				if (0xFFFF!=buffer[23]&&0x0000!=buffer[23]){
-#ifdef IDE_DEBUG
-					kprintf("\t\tFirmware revision: %s\n",&buffer[23]);
-#endif // IDE_DEBUG
-					conform++;
-				}
-				cmd.reg_cmd = IDEC_IDENTIFY;
-				ide_exec_cmd(ctlpt[i],&cmd);
-				result=ide_wait_interrupt(ppp[i][j],1000);
-				inputs(ctlpt[i]->reg_data,(_u32*)buffer,SECTOR_SIZE);
-				buffer[20] &= 0xFF00;
-				if (0xFFFF!=buffer[10]&&0x0000!=buffer[10]){
-#ifdef IDE_DEBUG
-					kprintf("\t\tDEVIC SN: %s\n",&buffer[10]);
-#endif // IDE_DEBUG
-					conform++;
-				}
-				buffer[47] &= 0xFF00;
-				if (0xFFFF!=buffer[27]&&0x0000!=buffer[27]){
-#ifdef IDE_DEBUG
-					kprintf("\t\tModel number: %s\n",&buffer[27]);
-#endif // IDE_DEBUG
-					conform++;
-				}buffer[27] &= 0xFF00;
-				if (0xFFFF!=buffer[23]&&0x0000!=buffer[23]){
-#ifdef IDE_DEBUG
-					kprintf("\t\tFirmware revision: %s\n",&buffer[23]);
-#endif // IDE_DEBUG
-					conform++;
-				}
-				devsize = *(size_t*)(&buffer[60]);
-			}
-			if (0==conform) {
-#ifdef IDE_DEBUG
-				kprintf("\t\tTHERE IS NO DEVICE CONNECTION!\n");
-#endif // IDE_DEBUG
-			}
-			if (0<conform&&index!=5) {
-				//kprintf("GOT A HARD DISK\n");
-				struct ide_device_status *pd = ide_struct_alloc(MAKEDEVNUM(MAJOR_HDA+devcnt,0));
-				if (NULL==pd) {
-					printk("IDE DRIVER CRASHED!");
-					return;
-				}
-				pd->lba_start = 1;
-				pd->lba_cnt = devsize;
-				pd->lba_end = devsize + 2;
-				pd->ide_dev_mask = 0;
-				if (0==i) 
-				{ // primary
-					pd->ide_dev_mask |= IDE_PRIMARY_MASK;
-					pd->ide_port_r = &ide_primary_r;
-					pd->ide_port_w = &ide_primary_w;
-					if (0==j) { // master
-						pd->ide_dev_mask |=IDE_MASTER_MASK;
-					} else { // slave
-						pd->ide_dev_mask |=IDE_SLAVE_MASK;
-					}
-				} else { // secondy
-					pd->ide_dev_mask |= IDE_SECONDY_MASK;
-					pd->ide_port_r = &ide_secondy_r;
-					pd->ide_port_w = &ide_secondy_w;
-					if (0==j) { // master
-						pd->ide_dev_mask |=IDE_MASTER_MASK;
-					} else { // slave
-						pd->ide_dev_mask |=IDE_SLAVE_MASK;
-					}
-				}
-				pd->devnum = MAKEDEVNUM(MAJOR_HDA+devcnt,0);
-				pin = kinode_cache_alloc();
-				if (NULL==pin) {
-					printk("KINODE CACHE CRASHED!");
-					return;
-				}
-				convert_device_path(&(pin->i_filename),dev_name[devcnt]);
-				pin->i_priva = pd;
-				pin->i_avl.avl_data = pin->i_filename.p_filename;
-				spinlock_init(pin->f_lock);
-				pin->i_iflg = ITYPE_BLOCK_DEV;
-				pin->i_fop = &ide_fop;
-				pin->i_iop = NULL;
-				pin->kf_lst = NULL;
-				pin->t_size = pd->lba_cnt;
-				pin->r_cnt = 0;
-
-				// add main device node into inode tree.
-				inode_addinto(pin);
-#ifdef IDE_DEBUG
-				kprintf("[#]\t%s (%d MB)\n",pin->i_filename.p_filename,pd->lba_cnt/2048);
-#endif //IDE_DEBUG
-				// scan device partation.
-				ide_device_scan_partation(pd,MAJOR_HDA+devcnt,dev_name[devcnt]); // scan device partation.
-				devcnt ++;
-			}
-		}
-	}
 }
 
 /*open mode*/
-int ide_open (struct kfile *pkf,struct kinode *pki)
+int ide_open (struct file *pkf,struct inode *pki)
 {
 	return 1; /*always success.*/
 }
 
 /*I/O contral methord.*/
-int ide_ioctl(struct kfile *pkf,int cmd,int param)
+int ide_ioctl(struct file *pkf,int cmd,int param)
 {
 	return 0;
 }
 
 /*read methord,pkf->offset used as LBA*/
-size_t ide_read (struct kfile *pkf,_user_in_ void *ptr,size_t size)
+int ide_read 
+	(struct file *pkf,_user_out_ char *ptr,offset_f off,_user_out_ offset_f *poff,int cnt)
 {
-	size_t remain=size,readed=0,toread=0;
-	const struct ide_device_status* pids = pkf->kin->i_priva;
-	spin_lock *lck;
-	_u8  *buffer;
-	size_t lba = pids->lba_start + pkf->offset;
-	size_t lbacnt = size / SECTOR_SIZE + (size%SECTOR_SIZE>0?1:0);
-
-	if (lba+lbacnt>pids->lba_end){
-		kprintf("Request out of boundry!");
-		return 0;
-	}
-
-	if (IDE_PRIMARY_MASK&pids->ide_dev_mask) {
-		lck = &ide0_buf_rwlck;
-		buffer = ide0_rwbuffer;
-	}
-	else {
-		lck = &ide1_buf_rwlck;
-		buffer = ide1_rwbuffer;
-	}
-
-	while (lbacnt>0)
-	{
-		get_spinlock(*lck);
-		ide_read_sct(pids,lba,buffer);
-		toread = remain>=SECTOR_SIZE?SECTOR_SIZE:remain;
-		cp2user(pkf->owner.ptsk->t_cr3,ptr,toread,buffer);
-		release_spinlock(*lck);
-
-		lba ++;
-		lbacnt --;
-		readed += toread;
-		remain -= (remain>=SECTOR_SIZE?SECTOR_SIZE:remain);
-	}
-	return readed;
+	return cnt;
 }
 
 /*write methord,pkf->offset used as LBA*/
-size_t ide_write(struct kfile *pkf,_user_in_ const void *ptr,size_t size)
+int ide_write
+	(struct file *pkf,_user_in_ const char *ptr,offset_f off,_user_out_ offset_f *poff,int cnt)
 {
-	size_t remain=size,writed=0,towrite=0;
-	const struct ide_device_status* pids = pkf->kin->i_priva;
-	spin_lock *lck;
-	_u8  *buffer;
-	size_t lba = pids->lba_start + pkf->offset;
-	size_t lbacnt = size / SECTOR_SIZE + (size%SECTOR_SIZE>0?1:0);
-
-	if (lba+lbacnt>pids->lba_end){
-		kprintf("Request out of boundry!");
-		return 0;
-	}
-
-	if (IDE_PRIMARY_MASK&pids->ide_dev_mask) {
-		lck = &ide0_buf_rwlck;
-		buffer = ide0_rwbuffer;
-	}
-	else {
-		lck = &ide1_buf_rwlck;
-		buffer = ide1_rwbuffer;
-	}
-
-	while (0!=lbacnt)
-	{
-		towrite = remain>=SECTOR_SIZE?SECTOR_SIZE:remain;
-		get_spinlock(*lck);
-		cpfromuser(pkf->owner.ptsk->t_cr3,ptr,towrite,buffer);
-		ide_write_sct(pids,lba,buffer);
-		release_spinlock(*lck);
-
-		lba ++;
-		lbacnt --;
-		writed += towrite;
-		remain -= (remain>=SECTOR_SIZE?SECTOR_SIZE:remain);
-	}
-	return writed;
-}
-
-/*seek mode.*/
-size_t ide_seek (struct kfile *pkf,size_t offset,int base)
-{
-	return 0;
+	return cnt;
 }
 
 /*FOR CORE*/
-size_t ide_c_read(struct kinode *kin,_core_out_ void *ptr,size_t offset,size_t size)
+int ide_c_read
+	(struct file *pkf,_user_out_ char *ptr,offset_f off,_user_out_ offset_f *poff,int cnt)
 {
-	size_t remain=size,readed=0,toread=0;
-	const struct ide_device_status* pids = kin->i_priva;
-	spin_lock *lck;
-	_u8  *buffer;
-	size_t lba = pids->lba_start + offset;
-	size_t lbacnt = size / SECTOR_SIZE + (size%SECTOR_SIZE>0?1:0);
-
-	if (lba+lbacnt>pids->lba_end){
-		kprintf("Request out of boundry!");
-		return 0;
-	}
-
-	if (IDE_PRIMARY_MASK&pids->ide_dev_mask) {
-		lck = &ide0_buf_rwlck;
-		buffer = ide0_rwbuffer;
-	}
-	else {
-		lck = &ide1_buf_rwlck;
-		buffer = ide1_rwbuffer;
-	}
-
-	while (lbacnt>0)
-	{
-		get_spinlock(*lck);
-		ide_read_sct(pids,lba,buffer);
-		toread = remain>=SECTOR_SIZE?SECTOR_SIZE:remain;
-		memcpy(ptr,buffer,toread);
-		release_spinlock(*lck);
-
-		ptr += toread;
-		lba ++;
-		lbacnt --;
-		readed += toread;
-		remain -= (remain>=SECTOR_SIZE?SECTOR_SIZE:remain);
-	}
-	return readed;
+	return cnt;
 }
 
 /*FOR CORE*/
-size_t ide_c_write(struct kinode *kin,_core_in_ const void *ptr,size_t offset,size_t size)
+int ide_c_write
+	(struct file *pkf,_user_in_ const char *ptr,offset_f off,_user_out_ offset_f *poff,int cnt)
 {
-	size_t remain=size,writed=0,towrite=0;
-	const struct ide_device_status* pids = kin->i_priva;
-	spin_lock *lck;
-	_u8  *buffer;
-	size_t lba = pids->lba_start + offset;
-	size_t lbacnt = size / SECTOR_SIZE + (size%SECTOR_SIZE>0?1:0);
-
-	if (lba+lbacnt > pids->lba_end){
-		kprintf("Request out of boundry! base %d count: %d\n",lba,lbacnt);
-		kprintf("S:%d E:%d %x\n",pids->lba_start,pids->lba_end,pids);
-		return 0;
-	}
-
-	if (IDE_PRIMARY_MASK&pids->ide_dev_mask) {
-		lck = &ide0_buf_rwlck;
-		buffer = ide0_rwbuffer;
-	}
-	else {
-		lck = &ide1_buf_rwlck;
-		buffer = ide1_rwbuffer;
-	}
-
-	while (0!=lbacnt)
-	{
-		towrite = remain>=SECTOR_SIZE?SECTOR_SIZE:remain;
-		get_spinlock(*lck);
-		memcpy(buffer,ptr,towrite);
-		ide_write_sct(pids,lba,buffer);
-		release_spinlock(*lck);
-
-		ptr += towrite;
-		lba ++;
-		lbacnt --;
-		writed += towrite;
-		remain -= (remain>=SECTOR_SIZE?SECTOR_SIZE:remain);
-	}
-	return writed;
+	return cnt;
 }
 
 /*IDE initialize procedure.*/

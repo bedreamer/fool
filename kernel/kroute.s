@@ -15,7 +15,7 @@
 ; #   从中断栈进ring0则从中断栈返回原来的状态
 ; #   从系统调用进ring0则从线程核心栈出ring0
 ; #################################################
-%include "asm-i386/symbol.inc"
+%include "asm-i386/symbol.i"
 
 EXPORTSYMBOL divide_error
 EXPORTSYMBOL single_step_exception

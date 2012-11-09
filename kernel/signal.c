@@ -7,7 +7,7 @@
 #include <kernel/kernel.h>
 #include <kernel/schedu.h>
 #include <kernel/signal.h>
-#include <kernel/kmalloc.h>
+#include <kernel/mm.h>
 
 /*create mutex object.*/
 struct mutex* createmutex(const char *mutexname,bool owner)

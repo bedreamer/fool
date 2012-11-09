@@ -5,14 +5,14 @@
  */
 #include <kernel/kernel.h>
 #include <kernel/fool.h>
-#include <kernel/kio.h>
+#include <kernel/kmodel.h>
 #include <kernel/signal.h>
-#include <drivers/tty.h>
+#include <drivers/console.h>
 
 char kbuf[1024]={0};
 char kx=0,ky=0;
 short *pvga=(short*)0xb8000;
-spin_lock klock={._lck=0};
+struct spin_lock klock={._lck=0};
 
 int vprintk(char *buf);
 void setcursor(int x,int y);
@@ -52,18 +52,21 @@ int vprintk(char *buf)
 	int i=0;
 	while(*buf){
 		pvga[ky*80+kx]=*buf | 0x0700;
-		switch(*buf){
-			case '\n':{
+		switch(*buf)
+		{
+			case '\n':
+			{
 				pvga[ky*80+kx]='\0';
 				kx=0,ky++;
 			}break;
-			case '\t':{
+			case '\t':
+			{
 				memset(&pvga[ky*80+kx],0,(4-kx%4)==0?4:(4-kx%4));
 				kx+=(4-kx%4)==0?4:(4-kx%4);
 			}break;
 			default:
 				kx++;
-				break;
+			break;
 		}
 		buf++;
 		if (80<=kx) {
@@ -71,7 +74,8 @@ int vprintk(char *buf)
 		}
 		setcursor(kx,ky);
 	}
-	if (24<=ky){
+	if (24<=ky)
+	{
 	 	outb(0x03d4,0x0c);
 		outb(0x03d5,(80*(ky-25))>>8&0xff);
 		outb(0x03d4,0x0d);

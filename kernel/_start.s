@@ -1,6 +1,6 @@
 ; jerry.asm
 ; bedreamer@163.com
-%include "asm-i386/symbol.inc"
+%include "asm-i386/symbol.i"
 
 EXPORTSYMBOL _start
 EXPORTSYMBOL kstacktop

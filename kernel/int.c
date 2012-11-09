@@ -19,17 +19,18 @@
 #include <kernel/fool.h>
 #include <kernel/descriptor.h>
 #include <kernel/int.h>
-#include <kernel/kio.h>
+#include <kernel/kmodel.h>
 #include <kernel/8259a.h>
-#include <kernel/page.h>
+#include <kernel/mm.h>
 #include <kernel/schedu.h>
-#include <kernel/sys.h>
 
 static struct gate_struct idt[IDT_SIZE]={{0}};
 #pragma pack(1)
-union{
+union
+{
 	byte d[6];
-	struct{
+	struct
+	{
 		_u16 limit;
 		struct gate_struct* base;
 	}ptr;
@@ -39,62 +40,113 @@ union{
 struct irq_route_table irqtable[IDT_SIZE]={{0}};
 volatile unsigned int clicnt=0;	/*中断被关闭的次数*/
 
+/*系统功能*/
+syscall_entry system_entry[SYS_CALL_SYS_CNT]={0};
+/*进程类系统调用入口*/
+syscall_entry ps_entry[SYS_CALL_PS_CNT]={NULL};
+/*文件类系统调用入口*/
+syscall_entry file_entry[SYS_CALL_FILE_CNT]={NULL};
+/*内存类系统调用*/
+syscall_entry mm_entry[SYS_CALL_MM_CNT]={NULL};
+
 /*这两个操作是配对操作*/
-void sti(){
+void sti()
+{
 	clicnt--;
-	if (0==clicnt){
+	if (0==clicnt)
+	{
 		asm_sti();
 	}
 }
-void cli(){
+void cli()
+{
 	clicnt++;
-	if (1==clicnt){
+	if (1==clicnt)
+	{
 		asm_cli();
 	}
 }
 
 void _exphandle8_(int error_code,int expvector,int eip,int cs,int eflags)
 {
-	printk("EXCEPTION:\nerror_code:%x,expvector:%x,eip:%x,cs:%x,eflags:%x\n",error_code,expvector,eip,cs,eflags);
+	printk("EXCEPTION:\n\
+		error_code:%x,expvector:%x,eip:%x,cs:%x,eflags:%x\n",
+		error_code,expvector,eip,cs,eflags);
 }
 
 void irqrouterinit(void)
 {
 //	printk("initialize IRQ and exception descriptor...");
-	init_idt_desc(INT_VECTOR_DIVIDE,		DA_386IGate, divide_error,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_DEBUG,		DA_386IGate, single_step_exception,	PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_NMI,			DA_386IGate, nmi,					PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_BREAKPOINT,	DA_386IGate, breakpoint_exception,	PRIVILEGE_USER);
-	init_idt_desc(INT_VECTOR_OVERFLOW,		DA_386IGate, overflow,				PRIVILEGE_USER);
-	init_idt_desc(INT_VECTOR_BOUNDS,		DA_386IGate, bounds_check,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_INVAL_OP,		DA_386IGate, inval_opcode,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_COPROC_NOT,	DA_386IGate, copr_not_available,	PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_DOUBLE_FAULT,	DA_386IGate, double_fault,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_COPROC_SEG,	DA_386IGate, copr_seg_overrun,		PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_INVAL_TSS,		DA_386IGate, inval_tss,				PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_SEG_NOT,		DA_386IGate, segment_not_present,	PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_STACK_FAULT,	DA_386IGate, stack_exception,		PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_PROTECTION,	DA_386IGate, general_protection,	PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_PAGE_FAULT,	DA_386IGate, page_fault,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_COPROC_ERR,	DA_386IGate, copr_error,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_DIVIDE,		
+		DA_386IGate, divide_error,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_DEBUG,		
+		DA_386IGate, single_step_exception,	PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_NMI,			
+		DA_386IGate, nmi,					PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_BREAKPOINT,	
+		DA_386IGate, breakpoint_exception,	PRIVILEGE_USER);
+	init_idt_desc(INT_VECTOR_OVERFLOW,		
+		DA_386IGate, overflow,				PRIVILEGE_USER);
+	init_idt_desc(INT_VECTOR_BOUNDS,		
+		DA_386IGate, bounds_check,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_INVAL_OP,		
+		DA_386IGate, inval_opcode,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_COPROC_NOT,	
+		DA_386IGate, copr_not_available,	PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_DOUBLE_FAULT,	
+		DA_386IGate, double_fault,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_COPROC_SEG,	
+		DA_386IGate, copr_seg_overrun,		PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_INVAL_TSS,		
+		DA_386IGate, inval_tss,				PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_SEG_NOT,		
+		DA_386IGate, segment_not_present,	PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_STACK_FAULT,	
+		DA_386IGate, stack_exception,		PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_PROTECTION,	
+		DA_386IGate, general_protection,	PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_PAGE_FAULT,	
+	DA_386IGate, page_fault,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_COPROC_ERR,	
+	DA_386IGate, copr_error,			PRIVILEGE_KRNL);
 
-	init_idt_desc(INT_VECTOR_IRQ0 + 0,	DA_386IGate, clock_hwint00,				PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ0 + 1,	DA_386IGate, keyboard_hwint01,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ0 + 2,	DA_386IGate, cascade_hwint02,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ0 + 3,	DA_386IGate, second_serial_hwint03,		PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ0 + 4,	DA_386IGate, first_serial_hwint04,		PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ0 + 5,	DA_386IGate, XT_winchester_hwint05,		PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ0 + 6,	DA_386IGate, floppy_hwint06,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ0 + 7,	DA_386IGate, printer_hwint07,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ8 + 0,	DA_386IGate, realtime_clock_hwint08,	PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ8 + 1,	DA_386IGate, irq_2_redirected_hwint09,	PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ8 + 2,	DA_386IGate, irq_10_hwint10,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ8 + 3,	DA_386IGate, irq_11_hwint11,			PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ8 + 4,	DA_386IGate, PS_2_mourse_hwint12,		PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ8 + 5,	DA_386IGate, FPU_exception_hwint13,		PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ8 + 6,	DA_386IGate, IDE0_hwint14,		PRIVILEGE_KRNL);
-	init_idt_desc(INT_VECTOR_IRQ8 + 7,	DA_386IGate, IDE1_hwint15,			PRIVILEGE_KRNL);
-	init_idt_desc(0x80,					DA_386IGate, asm_sys_call,				PRIVILEGE_USER);
+	init_idt_desc(INT_VECTOR_IRQ0 + 0,	
+		DA_386IGate, clock_hwint00,				PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ0 + 1,	
+		DA_386IGate, keyboard_hwint01,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ0 + 2,	
+		DA_386IGate, cascade_hwint02,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ0 + 3,	
+		DA_386IGate, second_serial_hwint03,		PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ0 + 4,	
+		DA_386IGate, first_serial_hwint04,		PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ0 + 5,	
+		DA_386IGate, XT_winchester_hwint05,		PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ0 + 6,	
+		DA_386IGate, floppy_hwint06,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ0 + 7,	
+		DA_386IGate, printer_hwint07,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ8 + 0,	
+		DA_386IGate, realtime_clock_hwint08,	PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ8 + 1,	
+		DA_386IGate, irq_2_redirected_hwint09,	PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ8 + 2,	
+		DA_386IGate, irq_10_hwint10,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ8 + 3,	
+		DA_386IGate, irq_11_hwint11,			PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ8 + 4,	
+		DA_386IGate, PS_2_mourse_hwint12,		PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ8 + 5,	
+		DA_386IGate, FPU_exception_hwint13,		PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ8 + 6,	
+		DA_386IGate, IDE0_hwint14,		PRIVILEGE_KRNL);
+	init_idt_desc(INT_VECTOR_IRQ8 + 7,	
+		DA_386IGate, IDE1_hwint15,			PRIVILEGE_KRNL);
+	init_idt_desc(0x80,					
+		DA_386IGate, asm_sys_call,				PRIVILEGE_USER);
+	
+	/*初始化系统调用路由表*/	
+	add_syscall_route_table();
 }
 
 /*
@@ -220,86 +272,216 @@ void loadidtr(void)
 /*系统调用接口*/
 void sys_call_handle(struct kthread_struct *pcall)
 {
-	_u32 eax=pcall->th_regs.eax;
-	_u32 ebx=pcall->th_regs.ebx;
-	_u32 ecx=pcall->th_regs.ecx;
-	_u32 edx=pcall->th_regs.edx;
-	int sysresult;
-#ifdef INT_DEBUG
-	kprintf("[ INT] Done to here.sys_call_handle %x %x %x %x\n",eax,ebx,ecx,edx);
-#endif // INT_DEBUG
-	switch((eax&0xFFFF0000)>>16)
-	{
-	case SYS_CAL_PROCESS:{
-		pcall->th_regs.eax=sys_process(eax,ebx,ecx,edx);
-	}
-	break;
-	case SYS_CALL_FILE_CTL:{
-		pcall->th_regs.eax=sys_file(eax,ebx,ecx,edx);
-	}break;
-	}
+	unsigned int slave = GETCHLDFUCTIONNUM(pcall->th_regs.eax);
+	syscall_entry call_entry=wrong_syscall_entry;
+
+	SYSCALL_ROUTE_START
+                       /*    类别             该类系统调用总数        调用入口      子功能号*/
+		SYSCALL_ROUTE(SYS_CALL_SYSTEM,		SYS_CALL_SYS_CNT,	system_entry,	slave)
+		SYSCALL_ROUTE(SYS_CALL_PROCESS,		SYS_CALL_PS_CNT,	ps_entry,		slave)
+		SYSCALL_ROUTE(SYS_CALL_FILE_CTL,	SYS_CALL_FILE_CNT,	file_entry,		slave)
+		SYSCALL_ROUTE(SYS_CALL_MM,			SYS_CALL_MM_CNT,	mm_entry,		slave)
+
+	SYSCALL_ROUTE_END
+
+	pcall->th_regs.eax = 
+	call_entry(
+		pcall->th_regs.ebx,
+		pcall->th_regs.ecx,
+		pcall->th_regs.edx,
+		pcall->th_regs.edi,
+		pcall->th_regs.esi);
+	return ;
 }
 
-/*进程类系统调用接口*/
-int sys_process(_u32 eax,_u32 ebx,_u32 ecx,_u32 edx)
+int wrong_syscall_entry(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
 {
-	return 0;
+	return INVALID;
 }
 
-/*文件操作类接口*/
-int sys_file(_u32 eax,_u32 ebx,_u32 ecx,_u32 edx)
+/*-----------------------------SYSTEM--------------------------------*/
+int sys_version(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
 {
-	int result;
-	char filename[512];
-
-	strncpfromuser(tsk_running->t_cr3,(const char*)ebx,filename,512);
-
-	switch(eax)
-	{
-	case SYS_CALL_FILE_OPEN:{
-		result=kopen(filename,(int)ecx);
-#ifdef INT_DEBUG
-		kprintf("[ INT] Done to here.open return %d\n",result);
-#endif // INT_DEBUG
-		return result;
-	}break;
-	case SYS_CALL_FILE_WRITE:{
-		result=kwrite(tsk_running->t_file[ebx],(const void _user_*)ecx,(size_t)edx);
-#ifdef INT_DEBUG
-		kprintf("[ INT] Done to here.write return %d\n",result);
-#endif // INT_DEBUG
-		return result;
-	}break;
-	case SYS_CALL_FILE_READ:{
-		result=kread(tsk_running->t_file[ebx],(void _user_*)ecx,(size_t)edx);
-#ifdef INT_DEBUG
-		kprintf("[ INT] Done to here.read return %d\n",result);
-#endif // INT_DEBUG
-		return result;
-	}break;
-	case SYS_CALL_FILE_SEEK:{
-		return kseek((int)ebx,(size_t)ecx,(int)edx);
-	}break;
-	case SYS_CALL_FILE_CLOSE:{
-		return kclose((int)ebx);
-	}break;
-	}
-	return -1;
+	return INVALID;
 }
 
+int sys_chroot(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
 
+int sys_mount(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
 
+int sys_umount(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
 
+/*----------------------------PS-----------------------------------*/
+int sys_execl(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
 
+int sys_execv(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
 
+int sys_exit(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
 
+/*-----------------------------FILE----------------------------------*/
+int sys_open(_user_in_ const char *ufilename,unsigned int mode,_u32 edx,_u32 edi,_u32 esi)
+{
+	char cfilename[K_MAX_PATH_LEN+1]={0};
+	char *pcf = &cfilename[0];
+	struct mntpnt_struct *pmnt=NULL;
+	struct dir *pdir = NULL;
+	int volnum = 0,end=0,len;
 
+	if (0==strncpfromuser(tsk_running->t_cr3,ufilename,cfilename,K_MAX_PATH_LEN)) 
+		goto faile;
 
+	volnum = atoi(cfilename);
+	if (volnum<0 || volnum >K_MNT_MAX_BLK_DEV)
+		goto faile; /*mount point not exsit*/
 
+	if (':' != cfilename[1] && ':' != cfilename[2] )
+		goto faile; /*Not a valid path*/
 
+	len = strnlen(cfilename,K_MAX_PATH_LEN);
+	if ('/' == cfilename[len-1] )
+		goto faile; /*Could not open a directory.*/
 
+	pmnt = &devroot[volnum];
+	if (MNT_DONE != pmnt->mnt_flg)
+		goto faile; /*not mount*/
 
+	pdir = & pmnt -> mnt_root;
 
+	while (0==end)
+	{
+		if (strstr(pdir->d_data.i_name,pcf))
+		{
+		}
+		end = 1;
+	}
+
+faile:
+	return INVALID;
+}
+
+int sys_write(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_read(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_close(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_ioctl(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_create(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_remove(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_mkdir(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_rmdir(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_readdir(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_lookup(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+/*-----------------------------MM-----------------------------------*/
+int sys_alloc(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_free(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_vmalloc(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+int sys_vmfree(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+{
+	return INVALID;
+}
+
+/*在这里添加系统调用路由代码*/
+ADD_SYS_CALL_ROUTE_TABLE_HERE
+	
+	/*system*/
+	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_VERSION),		sys_version )
+	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_CHROOT),		sys_chroot  )
+	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_MOUNT),			sys_mount   )
+	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_UMOUNT),		sys_umount  )
+
+	/*ps*/
+	SYSCALL_PS( GETCHLDFUCTIONNUM(SYS_CALL_EXECL),			sys_execl	)
+	SYSCALL_PS( GETCHLDFUCTIONNUM(SYS_CALL_EXECL),			sys_execv	)
+	SYSCALL_PS( GETCHLDFUCTIONNUM(SYS_CALL_EXECV),			sys_exit	)
+
+	/*file*/
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_OPEN),	sys_open	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_WRITE),	sys_write	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_READ),	sys_read	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_CLOSE),	sys_close	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_IOCTL),	sys_ioctl	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_CREATE),	sys_create	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_REMOVE),	sys_remove	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_MKDIR),	sys_mkdir	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_RMDIR),	sys_rmdir	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_READDIR),	sys_readdir	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_LOOKUP),	sys_lookup	)
+
+	/*mm*/
+	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_ALLOC),		sys_open	)
+	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_FREE),		sys_write	)
+	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_VMALLOC),		sys_read	)
+	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_VMFREE),		sys_close	)
+	
+END_SYS_CALL_ROUTE_TABLE_HERE
 
 
 

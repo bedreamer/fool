@@ -8,27 +8,24 @@
 
 #include <kernel/kernel.h>
 #include <kernel/descriptor.h>
+#include <kernel/kmodel.h>
 
 /*thread is creating*/
-#define STATUS_THREAD_CREATING		0x0001
+#define STATUS_THREAD_CREATING			0x0001
 /*thread created but not running*/
 #define STATUS_THREAD_CREATED			0x0002
 /*times up hang-up*/
 #define STATUS_THREAD_HANGUP			0x0004
 /*I/O block*/
-#define STATUS_THREAD_IOHANGUP		0x0008
+#define STATUS_THREAD_IOHANGUP			0x0008
 /*running.*/
-#define STASTUS_THREAD_RUNNING		0x0010
+#define STASTUS_THREAD_RUNNING			0x0010
 /*get a QUIT signal but not quit.*/
 #define STATUS_THREAD_SIGNAL_KILL		0x0020
 /*quiting.*/
 #define STATUS_THREAD_KILLING			0x0040
 /*already quit*/
 #define STATUS_THREAD_KILLED			0x0080
-
-/*task address space.*/
-struct task_addr_space{
-};
 
 /*thread switch stack buffer.*/
 struct stack_regs_struct
@@ -78,11 +75,6 @@ struct kthread_struct
 	struct task_struct *th_ptsk;
 };
 
-/*How many file open a task.*/
-#define MAX_TASK_OPEN_FILES		256
-/*How many thread a task can be have.*/
-#define MAX_THREAD_PER_TASK		256
-
 /* PCB.
  *@t_cr3: task cr3 register.
  *@t_thrd: task thread array.
@@ -99,16 +91,17 @@ struct kthread_struct
  *@t_fcnt: how many file opend.
  *@t_file: opend file index array.
  */
-struct task_struct{
+struct task_struct
+{
 	size_t t_cr3;
-	struct kthread_struct *t_thrd[MAX_THREAD_PER_TASK];
+	struct kthread_struct *t_thrd[K_MAX_THREAD_CNT_PPS];
 	size_t t_threadcnt;
 
 	struct list_head t_lst;
 	char t_name[32];
 
 	struct message *t_pmsgq;
-	spin_lock t_msglck;
+	struct spin_lock t_msglck;
 
 	pid_t	t_ppid;
 	pid_t	t_pid;	
@@ -116,9 +109,9 @@ struct task_struct{
 
 	struct task_struct *t_pparent;
 
-	spin_lock t_flck;
+	struct spin_lock t_flck;
 	size_t t_fcnt;
-	struct kfile *t_file[MAX_TASK_OPEN_FILES];
+	struct file *t_file[K_MAX_FILE_OPEN_PPS];
 };
 
 /*main schedu program.*/
@@ -134,19 +127,6 @@ extern struct task_struct * tsk_running;
 extern struct task_struct Init;
 extern struct kthread_struct Pinit;
 
-/*get task opened file.*/
-extern int check_taskfile(_core_in_ struct task_struct *,_core_out_ struct kfile **,_core_in_ const char *);
-extern struct kfile* check_taskfile_ex(struct task_struct *,int);
-/*set task opened file.*/
-extern int set_taskfile(_core_in_ struct task_struct *,_core_in_ struct kfile *);
-
-/*create init process.*/
-extern int create_initprocess(void *pakeaddr,size_t pakesize);
-/*run Init process.*/
-extern void run_initprocess(void);
-/*create process.*/
-extern int create_process(int ppid,_core_in_ const char *);
-/*fill register.*/
 extern void file_threadregister(struct stack_regs_struct *,size_t,size_t,int,const char *argv[])
 ;
 

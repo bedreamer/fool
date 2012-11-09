@@ -6,8 +6,8 @@ org 07c00h
 
 jmp 		_boot_start
 
-%include "asm-i386/fat12.inc"
-%include "asm-i386/segdef.inc"
+%include "asm-i386/fat12.i"
+%include "asm-i386/segdef.i"
 %include "asm-i386/lib/string.s"
 %include "asm-i386/lib/floppy.s"
 

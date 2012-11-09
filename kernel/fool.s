@@ -2,7 +2,7 @@
 ; bedreamer@163.com
 ; Tuesday, May 29, 2012 10:23:32 CST 
 ; 内核操作函数集
-%include "asm-i386/symbol.inc"
+%include "asm-i386/symbol.i"
 
 EXPORTSYMBOL asm_set_ds
 EXPORTSYMBOL asm_set_es

@@ -3,14 +3,14 @@
  *	bedreamer@163.com
  */
 #include <kernel/kernel.h>
-#include <kernel/module.h>
+#include <kernel/kmodel.h>
 #include <kernel/signal.h>
 #include <kernel/ioport.h>
 
 /*region list head.*/
 struct ioport_region *irhead=NULL;
 /*read write spin lock of region list*/
-struct _spin_lock irlck={._lck=SPIN_UNLOCKED};
+struct spin_lock irlck={._lck=SPIN_UNLOCKED};
 
 /*check if the region already registerd.*/
 int ioport_region_check(unsigned short start,unsigned short end)
@@ -37,7 +37,7 @@ int ioport_region_check(unsigned short start,unsigned short end)
 	} while (p!=irhead);
 out:
 	release_spinlock(irlck);
-	return 0;
+	return result;
 }
 
 /*register an ioport region.*/

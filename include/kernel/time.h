@@ -21,7 +21,8 @@
 
 /*system time struct.
  */
-struct sys_time{
+struct sys_time
+{
 	_u8 t_sec,t_min,t_hour,t_weekday,t_day,t_month;
 	_u16 t_year;
 };

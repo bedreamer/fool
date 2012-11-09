@@ -10,9 +10,10 @@
 /*  spin lock.
  *	@ _lck : seed for spin lock.
  */
-typedef struct _spin_lock{
+struct spin_lock
+{
 	volatile int _lck;
-}spin_lock;
+};
 #define SPIN_LOCKED		0xCCCCCCCC
 #define SPIN_UNLOCKED	0x00000000
 
@@ -92,6 +93,10 @@ int wait(struct semaphore *psp);
 #define _P(psp) wait(psp)
 int signal(struct semaphore *psp);
 #define _V(psp) signal(psp)
+
+struct message{
+	struct list_head mlst;
+};
 
 #endif /*_SIGNAL_H_*/
 

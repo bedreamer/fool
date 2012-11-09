@@ -7,20 +7,19 @@
 #include <kernel/kernel.h>
 #include <kernel/fool.h>
 #include <kernel/descriptor.h>
+#include <kernel/kmodel.h>
 #include <kernel/schedu.h>
 #include <kernel/int.h>
-#include <kernel/kio.h>
 #include <kernel/printk.h> 
 #include <kernel/8259a.h>
 #include <kernel/8042.h>
-#include <kernel/page.h>
+#include <kernel/mm.h>
 #include <kernel/elf.h>
-#include <kernel/sys.h>
 #include <kernel/time.h>
 #include <kernel/cache.h>
 #include <drivers/keyboard.h>
 #include <drivers/ide.h>
-#include <drivers/tty.h>
+#include <drivers/console.h>
 #include <fs/mfs.h>
 
 struct seg_descriptor gdt[GDT_SIZE]={{0}};	/* 全局描述符**/
@@ -35,7 +34,6 @@ union{
 #pragma pack()
 struct tss_struct tss={0};
 extern void memdevinit();	/*内存设备*/
-static size_t untarkernelmodule(void);
 extern byte *pool;
 /*kernel version*/
 const char *fool_version="FOOL-V0.01";
@@ -48,7 +46,7 @@ void kmain()
 {
 	unsigned short *p = (unsigned short*)0xb8000;
 
-	for (;p<0xA0000;p++) 				// 清屏
+	for (;(unsigned int)p<0xA0000;p++) 				// 清屏
 		*p = 0x0700 | ' ';
 
 	irqrouterinit();					/*初始化中断，异常，系统调用路由.*/
@@ -59,29 +57,22 @@ void kmain()
 
 	cache_init();						/*初始化cache.*/
 
-	init_rootfs();						/*初始化根文件系统.*/
+//	init_rootfs();						/*初始化根文件系统.*/
 
-	tty_init();							/*初始化TTY设备.*/
+//	tty_init();							/*初始化TTY设备.*/
 
 	kscheduinit();						/*初始化调度系统.*/
 
 	__asm__ volatile ("sti");			/*开全局中断.*/
 
-	ide_init();							/*初始化IDE设备.*/
+//	ide_init();							/*初始化IDE设备.*/
 
-	extern int    mfs_mkfs(struct kinode *kin,_core_in_ const char *lable);
-	struct kinode *pd = inode_search("/dev/hda2");
-	if (pd){
-		if (0==mfs_mkfs(pd,"I want create a file system!"))
-			kprintf("asdfadfasdf %x",pd->i_iflg);
-	} else kprintf("Faile @ kmain");
+//	initializekeyboard();				/*初始化键盘驱动.*/
 
-	initializekeyboard();				/*初始化键盘驱动.*/
-
-	create_initprocess((void*)0x00020000,256*1024);			
+//	create_initprocess((void*)0x00020000,256*1024);			
 										/*创建Init进程.*/
 
-	run_initprocess();					/*执行Init进程，内核启动完成.*/
+//	run_initprocess();					/*执行Init进程，内核启动完成.*/
 
 	/*code can't be here.*/
 

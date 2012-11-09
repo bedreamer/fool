@@ -143,5 +143,6 @@
 
 void initializekeyboard(void);
 void keyboardhandle(void);
+extern _u32 keymap[NR_SCAN_CODES * MAP_COLS];
 
 #endif /*_KEYBOARD_*/

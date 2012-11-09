@@ -186,7 +186,7 @@ static void *mm_bestfit(struct mmpoolinfor* mmp,long size)
 			/*free space.*/
 			if ( NULL == pthis->next )
 			{
-				/*last valiable space.split memory from this section and add a new mmnode at end of this space.*/
+		/*last valiable space.split memory from this section and add a new mmnode at end of this space.*/
 				if ( pthis->thissize >= size + sizeof(struct mmnode) )
 				{
 					pbest = pthis;
@@ -200,28 +200,17 @@ static void *mm_bestfit(struct mmpoolinfor* mmp,long size)
 				{
 					/*this section is valide. we will find the best section below.*/
 					if ( NULL == pbest )
-					{
 						/*find the first valide space.*/
 						pbest = pthis;
-					}
 					else
 					{
 						if ( pbest->thissize > pthis->thissize )
-						{
 							/*swap pointer which point to best space.*/
 							pbest = pthis;
-						}
-						else
-						{ 
-							continue; /*compare next.*/
-						}
+						else continue; /*compare next.*/
 					}
 				}
-				else
-				{
-					/*this block is below than request space.*/
-					continue;
-				};
+				else continue; /*this block is below than request space.*/
 			}
 		}
 		else

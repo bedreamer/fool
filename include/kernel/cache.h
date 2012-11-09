@@ -30,7 +30,7 @@ struct kcache_struct {
 	size_t c_bsize;
 	size_t c_bcnt;
 	size_t c_avaliable;
-	struct _spin_lock c_bmaplck;
+	struct spin_lock c_bmaplck;
 	volatile unsigned char *c_bmap; 
 	unsigned char *c_bpool;
 };
@@ -69,14 +69,16 @@ extern void structname##_cache_free(nodename *);
 
 //{{ ADD CACHE ALLOC DECLARE HERE
 // CACHE_CREATOR_ALLOC_DECLARE(nodename,structname)
-	CACHE_CREATOR_ALLOC_DECLARE(struct kinode,kinode)
-	CACHE_CREATOR_ALLOC_DECLARE(struct kfile,kfile)
+	CACHE_CREATOR_ALLOC_DECLARE(struct inode,inode)
+	CACHE_CREATOR_ALLOC_DECLARE(struct dir,dir)
+	CACHE_CREATOR_ALLOC_DECLARE(struct file,file)
 //}} END HERE
 
 //{{ ADD CACHE ALLOC DECLARE HERE
 // CACHE_CREATOR_FREE_DECLARE(nodename,structname)
-	CACHE_CREATOR_FREE_DECLARE(struct kinode,kinode)
-	CACHE_CREATOR_FREE_DECLARE(struct kfile,kfile)
+	CACHE_CREATOR_FREE_DECLARE(struct inode,inode)
+	CACHE_CREATOR_FREE_DECLARE(struct dir,dir)
+	CACHE_CREATOR_FREE_DECLARE(struct file,file)
 //}} END HERE
 
 #endif /*_K_CACHE_*/
