@@ -4,7 +4,6 @@
  *	Copyright (c) fool
  */
 #include <kernel/kernel.h>
-#include <kernel/fool.h>
 #include <kernel/kmodel.h>
 #include <kernel/signal.h>
 #include <drivers/console.h>

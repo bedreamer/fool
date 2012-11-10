@@ -4,7 +4,6 @@
  *	Thursday, May 31, 2012 02:04:29 CST 
  */
 #include <kernel/kernel.h>
-#include <kernel/fool.h>
 #include <kernel/mm.h>
 #include <kernel/int.h>
 #include <kernel/signal.h>

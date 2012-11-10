@@ -10,7 +10,6 @@
  *	0x02000000 ~ .........	FREE						32M以上 
  */
 #include <kernel/kernel.h>
-#include <kernel/fool.h>
 #include <kernel/schedu.h>
 #include <kernel/mm.h>
 

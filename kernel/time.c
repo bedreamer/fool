@@ -4,7 +4,6 @@
  *	COMS time module
  */
 #include <kernel/kernel.h>
-#include <kernel/fool.h>
 #include <kernel/time.h>
 
 void getsystime(struct sys_time *st)

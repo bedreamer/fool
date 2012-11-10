@@ -7,7 +7,6 @@
 #define _SCHEDU_
 
 #include <kernel/kernel.h>
-#include <kernel/descriptor.h>
 #include <kernel/kmodel.h>
 
 /*thread is creating*/
@@ -127,7 +126,8 @@ extern struct task_struct * tsk_running;
 extern struct task_struct Init;
 extern struct kthread_struct Pinit;
 
-extern void file_threadregister(struct stack_regs_struct *,size_t,size_t,int,const char *argv[])
-;
+extern void file_threadregister(struct stack_regs_struct *,size_t,size_t,int,const char *argv[]);
+extern pid_t do_execl(_ci const char *,_ci const char param);
+extern pid_t do_execv(_ci const char *,_ci const char param);
 
 #endif /*_SCHEDU_*/

@@ -16,11 +16,8 @@
  *	其中1、2、5已经由相应的代码实现，3、4是需要相应的设备驱动进行处理的。
  */
 #include <kernel/kernel.h>
-#include <kernel/fool.h>
-#include <kernel/descriptor.h>
 #include <kernel/int.h>
 #include <kernel/kmodel.h>
-#include <kernel/8259a.h>
 #include <kernel/mm.h>
 #include <kernel/schedu.h>
 
@@ -278,7 +275,7 @@ void sys_call_handle(struct kthread_struct *pcall)
 	SYSCALL_ROUTE_START
                        /*    类别             该类系统调用总数        调用入口      子功能号*/
 		SYSCALL_ROUTE(SYS_CALL_SYSTEM,		SYS_CALL_SYS_CNT,	system_entry,	slave)
-		SYSCALL_ROUTE(SYS_CALL_PROCESS,		SYS_CALL_PS_CNT,	ps_entry,		slave)
+		SYSCALL_ROUTE(SYS_CALL_PROCESS,	SYS_CALL_PS_CNT,	ps_entry,		slave)
 		SYSCALL_ROUTE(SYS_CALL_FILE_CTL,	SYS_CALL_FILE_CNT,	file_entry,		slave)
 		SYSCALL_ROUTE(SYS_CALL_MM,			SYS_CALL_MM_CNT,	mm_entry,		slave)
 
@@ -340,51 +337,67 @@ int sys_exit(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
 int sys_open(_user_in_ const char *ufilename,unsigned int mode,_u32 edx,_u32 edi,_u32 esi)
 {
 	char cfilename[K_MAX_PATH_LEN+1]={0};
-	char *pcf = &cfilename[0];
 	struct mntpnt_struct *pmnt=NULL;
-	struct dir *pdir = NULL;
-	int volnum = 0,end=0,len;
 
 	if (0==strncpfromuser(tsk_running->t_cr3,ufilename,cfilename,K_MAX_PATH_LEN)) 
 		goto faile;
 
+#define volnum edx
 	volnum = atoi(cfilename);
 	if (volnum<0 || volnum >K_MNT_MAX_BLK_DEV)
 		goto faile; /*mount point not exsit*/
 
 	if (':' != cfilename[1] && ':' != cfilename[2] )
 		goto faile; /*Not a valid path*/
+	if ('/' != cfilename[1] && '/' != cfilename[2] )
+		goto faile; /*Not a valid path*/
 
+#define len edi
 	len = strnlen(cfilename,K_MAX_PATH_LEN);
+	if (len<=3) goto faile;
 	if ('/' == cfilename[len-1] )
 		goto faile; /*Could not open a directory.*/
-
+#undef edi
 	pmnt = &devroot[volnum];
 	if (MNT_DONE != pmnt->mnt_flg)
 		goto faile; /*not mount*/
+#undef volnum
 
-	pdir = & pmnt -> mnt_root;
-
-	while (0==end)
-	{
-		if (strstr(pdir->d_data.i_name,pcf))
-		{
-		}
-		end = 1;
-	}
-
+#define i esi
+	i = 0;
+	while ('/' != cfilename[i]) i++;
+	return sys_do_open(&cfilename[i],& pmnt -> mnt_root,mode);
+#undef i
 faile:
 	return INVALID;
 }
 
-int sys_write(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+int sys_write(int fd,_ui const char * ptr,foff_t offset,foff_t *poff,int cnt)
 {
-	return INVALID;
+	if (fd>=0&&fd<=K_MAX_FILE_OPEN_PPS)
+	{
+		struct file *pf = tsk_running->t_file[fd];
+		struct inode *pi;
+		if (NULL==pf) return EOF;
+		pi = pf->f_pi;
+		if (pi &&pi->f_op&&pi->f_op->write)
+			return pi->f_op->write(pf,ptr,offset,poff,cnt);
+	}
+	return EOF;
 }
 
-int sys_read(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
+int sys_read(int fd,_uo char * ptr,foff_t offset,foff_t *poff,int cnt)
 {
-	return INVALID;
+	if (fd>=0&&fd<=K_MAX_FILE_OPEN_PPS)
+	{
+		struct file *pf = tsk_running->t_file[fd];
+		struct inode *pi;
+		if (NULL==pf) return EOF;
+		pi = pf->f_pi;
+		if (pi &&pi->f_op&&pi->f_op->read)
+			return pi->f_op->read(pf,ptr,offset,poff,cnt);
+	}
+	return EOF;
 }
 
 int sys_close(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
@@ -452,34 +465,34 @@ int sys_vmfree(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
 ADD_SYS_CALL_ROUTE_TABLE_HERE
 	
 	/*system*/
-	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_VERSION),		sys_version )
-	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_CHROOT),		sys_chroot  )
-	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_MOUNT),			sys_mount   )
-	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_UMOUNT),		sys_umount  )
+	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_VERSION),         sys_version )
+	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_CHROOT),          sys_chroot  )
+	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_MOUNT),           sys_mount   )
+	SYSCALL_SYS( GETCHLDFUCTIONNUM(SYS_CALL_UMOUNT),          sys_umount  )
 
 	/*ps*/
-	SYSCALL_PS( GETCHLDFUCTIONNUM(SYS_CALL_EXECL),			sys_execl	)
-	SYSCALL_PS( GETCHLDFUCTIONNUM(SYS_CALL_EXECL),			sys_execv	)
-	SYSCALL_PS( GETCHLDFUCTIONNUM(SYS_CALL_EXECV),			sys_exit	)
+	SYSCALL_PS( GETCHLDFUCTIONNUM(SYS_CALL_EXECL),            sys_execl	)
+	SYSCALL_PS( GETCHLDFUCTIONNUM(SYS_CALL_EXECL),            sys_execv	)
+	SYSCALL_PS( GETCHLDFUCTIONNUM(SYS_CALL_EXECV),            sys_exit	    )
 
 	/*file*/
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_OPEN),	sys_open	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_WRITE),	sys_write	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_READ),	sys_read	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_CLOSE),	sys_close	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_IOCTL),	sys_ioctl	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_CREATE),	sys_create	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_REMOVE),	sys_remove	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_MKDIR),	sys_mkdir	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_RMDIR),	sys_rmdir	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_READDIR),	sys_readdir	)
-	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_LOOKUP),	sys_lookup	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_OPEN),      sys_open	    )
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_WRITE),     sys_write	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_READ),      sys_read     )
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_CLOSE),     sys_close	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_IOCTL),     sys_ioctl	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_CREATE),    sys_create	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_REMOVE),    sys_remove	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_MKDIR),     sys_mkdir	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_RMDIR),     sys_rmdir	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_READDIR),   sys_readdir	)
+	SYSCALL_FILE( GETCHLDFUCTIONNUM(SYS_CALL_FILE_LOOKUP),    sys_lookup	)
 
 	/*mm*/
-	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_ALLOC),		sys_open	)
-	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_FREE),		sys_write	)
-	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_VMALLOC),		sys_read	)
-	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_VMFREE),		sys_close	)
+	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_ALLOC),         sys_open	    )
+	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_FREE),          sys_write	)
+	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_VMALLOC),       sys_read	    )
+	SYSCALL_MM( GETCHLDFUCTIONNUM(SYS_CALL_MM_VMFREE),        sys_close	)
 	
 END_SYS_CALL_ROUTE_TABLE_HERE
 

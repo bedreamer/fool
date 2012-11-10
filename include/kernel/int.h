@@ -6,6 +6,24 @@
 #ifndef _INT_
 #define _INT_
 
+#include <kernel/kernel.h>
+
+/* 8259A interrupt controller ports. */
+#define	INT_M_CTL		0x20	/* I/O port for interrupt controller         <Master> */
+#define	INT_M_CTLMASK	0x21	/* setting bits in this port disables ints   <Master> */
+#define	INT_S_CTL		0xA0	/* I/O port for second interrupt controller  <Slave>  */
+#define	INT_S_CTLMASK	0xA1	/* setting bits in this port disables ints   <Slave>  */
+#define EOI				0x20	/* command of end of interrupt*/
+
+#define	INT_VECTOR_IRQ0			0x20	/*start vector number of 8259A master contraller*/
+#define	INT_VECTOR_IRQ8			0x28	/*start vector number of 8259A slave contraller*/
+
+void init8259A(void);
+#define eoi_m() outb(INT_M_CTL,EOI)
+#define eoi_s() outb(INT_S_CTL,EOI)
+void _8259Asti(_u8 vector);
+void _8259Acli(_u8 vector);
+
 #define EXPVECTOR_CNT		32
 #define EXPMAXVECTOR		31
 #define MAX_INT_REENTER		128
@@ -51,6 +69,43 @@
 typedef void (*hwhandle)(void);
 typedef void (*exphandle)(int error_code,int expvector,int eip,int cs,int eflags);
 
+/*kroute.asm*/
+extern void divide_error(void);
+extern void single_step_exception(void);
+extern void nmi(void);
+extern void breakpoint_exception(void);
+extern void overflow(void);
+extern void bounds_check(void);
+extern void inval_opcode(void);
+extern void copr_not_available(void);
+extern void double_fault(void);
+extern void copr_seg_overrun(void);
+extern void inval_tss(void);
+extern void segment_not_present(void);
+extern void stack_exception(void);
+extern void general_protection(void);
+extern void page_fault(void);
+extern void copr_error(void);
+extern void clock_hwint00(void);
+extern void keyboard_hwint01(void);
+extern void cascade_hwint02(void);
+extern void second_serial_hwint03(void);
+extern void first_serial_hwint04(void);
+extern void XT_winchester_hwint05(void);
+extern void floppy_hwint06(void);
+extern void printer_hwint07(void);
+extern void realtime_clock_hwint08(void);
+extern void irq_2_redirected_hwint09(void);
+extern void irq_10_hwint10(void);
+extern void irq_11_hwint11(void);
+extern void PS_2_mourse_hwint12(void);
+extern void FPU_exception_hwint13(void);
+extern void IDE0_hwint14(void);
+extern void IDE1_hwint15(void);
+extern void asm_sys_call(void);
+extern void asm_sys_call(void);
+extern void asm_restart(void);
+
 /*硬件中断,异常路由结构*/
 struct irq_route_table
 {
@@ -82,10 +137,10 @@ int wrong_syscall_entry(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi);
 /*系统基本功能*/
 #define SYS_CALL_SYS			(0x00010000)
 #define SYS_CALL_SYSTEM			(SYS_CALL_SYS>>16)
-#define SYS_CALL_VERSION		(SYS_CALL_SYSTEM|0x00000001)
-#define SYS_CALL_CHROOT			(SYS_CALL_SYSTEM|0x00000002)
-#define SYS_CALL_MOUNT			(SYS_CALL_SYSTEM|0x00000003)
-#define SYS_CALL_UMOUNT			(SYS_CALL_SYSTEM|0x00000004)
+#define SYS_CALL_VERSION		(SYS_CALL_SYS|0x00000001)
+#define SYS_CALL_CHROOT			(SYS_CALL_SYS|0x00000002)
+#define SYS_CALL_MOUNT			(SYS_CALL_SYS|0x00000003)
+#define SYS_CALL_UMOUNT			(SYS_CALL_SYS|0x00000004)
 #define SYS_CALL_SYS_CNT		4
 int sys_version(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi);
 int sys_chroot(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi);
@@ -119,8 +174,8 @@ int sys_exit(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi);
 #define SYS_CALL_FILE_LOOKUP    (SYS_CALL_FILE|0x0000000B)
 #define SYS_CALL_FILE_CNT       0x0B
 int sys_open(_user_in_ const char *,unsigned int mode,_u32 edx,_u32 edi,_u32 esi);
-int sys_write(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi);
-int sys_read(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi);
+int sys_write(int fd,_ui const char * ptr,foff_t offset,foff_t *poff,int cnt);
+int sys_read(int fd,_uo char * ptr,foff_t offset,foff_t *poff,int cnt);
 int sys_close(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi);
 int sys_ioctl(int fd,_u32 ecx,_u32 edx,_u32 edi,_u32 esi);
 int sys_create(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi);

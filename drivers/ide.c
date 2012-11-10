@@ -7,23 +7,21 @@
  * I prefer to use DMA mode later.
  */
 #include <kernel/kernel.h>
-#include <kernel/fool.h>
 #include <kernel/int.h>
 #include <kernel/kmodel.h>
-#include <kernel/cache.h>
 #include <kernel/mm.h>
 #include <drivers/ide.h>
 
 int ide_open(struct file *,struct inode *);
 int ide_close(struct file *,struct inode *);
-int ide_read(struct file *,_user_out_ char *,offset_f,_user_out_ offset_f *,int cnt);
-int ide_write(struct file *,_user_in_ const char *,offset_f,_user_out_ offset_f *,int cnt);
+int ide_read(struct file *,_user_out_ char *,foff_t,_user_out_ foff_t *,int cnt);
+int ide_write(struct file *,_user_in_ const char *,foff_t,_user_out_ foff_t *,int cnt);
 
-int ide_kread(struct file *,_core_out_ char *,offset_f,_core_out_ offset_f *,int cnt);
-int ide_kwrite(struct file *,_core_in_ const char *,offset_f,_core_out_ offset_f *,int cnt);
+int ide_kread(struct file *,_core_out_ char *,foff_t,_core_out_ foff_t *,int cnt);
+int ide_kwrite(struct file *,_core_in_ const char *,foff_t,_core_out_ foff_t *,int cnt);
 
-int ide_c_read(struct file *,_core_out_ char *,offset_f,_core_out_ offset_f *,int cnt);
-int ide_c_write(struct file *,_user_in_ const char *,offset_f,_user_out_ offset_f *,int cnt);
+int ide_c_read(struct inode *,_core_out_ char *,foff_t,_core_out_ foff_t *,int cnt);
+int ide_c_write(struct inode *,_user_in_ const char *,foff_t,_user_out_ foff_t *,int cnt);
 
 /*port for primary device when read.*/
 struct ide_ctl_ioport ide_primary_r={
@@ -371,34 +369,34 @@ int ide_ioctl(struct file *pkf,int cmd,int param)
 
 /*read methord,pkf->offset used as LBA*/
 int ide_read 
-	(struct file *pkf,_user_out_ char *ptr,offset_f off,_user_out_ offset_f *poff,int cnt)
+	(struct file *pkf,_user_out_ char *ptr,foff_t off,_user_out_ foff_t *poff,int cnt)
 {
 	return cnt;
 }
 
 /*write methord,pkf->offset used as LBA*/
 int ide_write
-	(struct file *pkf,_user_in_ const char *ptr,offset_f off,_user_out_ offset_f *poff,int cnt)
+	(struct file *pkf,_user_in_ const char *ptr,foff_t off,_user_out_ foff_t *poff,int cnt)
 {
 	return cnt;
 }
 
 /*FOR CORE*/
 int ide_c_read
-	(struct file *pkf,_user_out_ char *ptr,offset_f off,_user_out_ offset_f *poff,int cnt)
+	(struct inode *pkf,_user_out_ char *ptr,foff_t off,_user_out_ foff_t *poff,int cnt)
 {
 	return cnt;
 }
 
 /*FOR CORE*/
 int ide_c_write
-	(struct file *pkf,_user_in_ const char *ptr,offset_f off,_user_out_ offset_f *poff,int cnt)
+	(struct inode *pi,_user_in_ const char *ptr,foff_t off,_user_out_ foff_t *poff,int cnt)
 {
 	return cnt;
 }
 
 /*IDE initialize procedure.*/
-void ide_init(void)
+void ide_startup(void)
 {
 	hwregistehandle(IDE0_INT,"IDE0 contraller driver",ide0_handle);
 	hwregistehandle(IDE1_INT,"IDE1 contraller driver",ide1_handle);

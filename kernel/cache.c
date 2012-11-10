@@ -5,9 +5,8 @@
  *	provide a fast malloc and free methord.
  */
 #include <kernel/kernel.h>
-#include <kernel/mm.h>
 #include <kernel/kmodel.h>
-#include <kernel/cache.h>
+#include <kernel/mm.h>
 #include <kernel/schedu.h>
 
 /*create a new cache.*/
@@ -73,6 +72,8 @@ void kcache_free(struct kcache_struct *pcs,void *ptr)
 //====================================================================================================================
 //{{ ADD CACHE PREDEFINE HERE
 	CACHE_PREDEFINE(cdir)
+	CACHE_PREDEFINE(cinode)
+	CACHE_PREDEFINE(cfile)
 //}} END HERE
 
 /* initialize cache etc.*/
@@ -80,17 +81,23 @@ void cache_init(void)
 {
 //{{ ADD CACHE INIT MACRO HERE
 // CACHE_CREATOR_INIT(cachename,nodename,nodecount)
-	CACHE_CREATOR_INIT(cdir,struct dir,1024)
+	CACHE_CREATOR_INIT(cdir,struct dir,64)
+	CACHE_CREATOR_INIT(cinode,struct inode,64)
+	CACHE_CREATOR_INIT(cfile,struct file,64)
 //}} END HERE
 //	kprintf("sizeof(kinode)=%d bytes sizeof(kfile)=%d bytes\n",sizeof(struct kinode),sizeof(struct kfile));
 }
 
 //{{ ADD CACHE ALLOC CODE HERE
 // CACHE_CREATOR_ALLOC_CODE(cachename,nodename,structname)
-	CACHE_CREATOR_ALLOC_CODE(cdir,struct dir,cdir)
+	CACHE_CREATOR_ALLOC_CODE(cdir,struct dir,dir)
+	CACHE_CREATOR_ALLOC_CODE(cinode,struct inode,inode)
+	CACHE_CREATOR_ALLOC_CODE(cfile,struct file,file)
 //}} END HERE
 
 //{{ ADD CACHE FREE CODE HERE
 //  CACHE_CREATOR_FREE_CODE(cachename,nodename,structname) 
-	CACHE_CREATOR_FREE_CODE(cdir,struct dir,cdir)
+	CACHE_CREATOR_FREE_CODE(cdir,struct dir,dir)
+	CACHE_CREATOR_FREE_CODE(cinode,struct inode,inode)
+	CACHE_CREATOR_FREE_CODE(cfile,struct file,file)
 //}} END HERE

@@ -202,6 +202,49 @@ int sprintf(char *buf,const char *fmt,...)
 	return vsprintf(buf,fmt,vl);
 }
 
+int detach_node(unsigned int index,const char *ptr,char *buf,unsigned int max)
+{	unsigned int i=0,m=max,n=max;
+	int len=0;
+	if ('/'!=*ptr) return -1;
+	if (NULL==buf) return -1;
 
-
-
+	while (*ptr)
+	{
+		if ('/'==*ptr)
+		{
+			if (i==index)
+			{
+				ptr ++;
+				break;
+			}
+			i ++;
+		}
+		ptr ++;
+	}
+	while (m-- && *ptr && '/' != *ptr)
+	{
+		*buf++ = *ptr ++;
+		len ++;
+	}
+	if ('/'==*ptr)
+	{
+		ptr ++;
+		if (*ptr)
+			goto done;
+	}
+	ptr ++;
+	while (*ptr)
+	{
+		if ('/'==*ptr){
+			ptr ++;
+			if (*ptr)
+				goto done;
+			else goto err;
+		}
+		ptr ++;
+	}
+done:
+	if (0!=len) return len;
+err:
+	return -1;
+}

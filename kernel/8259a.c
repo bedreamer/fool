@@ -4,8 +4,6 @@
  *	Thursday, May 31, 2012 07:10:55 CST 
  */
 #include <kernel/kernel.h>
-#include <kernel/fool.h>
-#include <kernel/8259a.h>
 #include <kernel/int.h>
 
 /*

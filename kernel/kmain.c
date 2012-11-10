@@ -5,18 +5,13 @@
  *	Copyright (C) 2012 - fool
  */
 #include <kernel/kernel.h>
-#include <kernel/fool.h>
-#include <kernel/descriptor.h>
 #include <kernel/kmodel.h>
 #include <kernel/schedu.h>
 #include <kernel/int.h>
 #include <kernel/printk.h> 
-#include <kernel/8259a.h>
-#include <kernel/8042.h>
 #include <kernel/mm.h>
 #include <kernel/elf.h>
 #include <kernel/time.h>
-#include <kernel/cache.h>
 #include <drivers/keyboard.h>
 #include <drivers/ide.h>
 #include <drivers/console.h>
@@ -33,7 +28,6 @@ union{
 }gdt_ptr={.ptr.limit=sizeof(struct seg_descriptor)*GDT_SIZE-1,.ptr.base=gdt};
 #pragma pack()
 struct tss_struct tss={0};
-extern void memdevinit();	/*内存设备*/
 extern byte *pool;
 /*kernel version*/
 const char *fool_version="FOOL-V0.01";
@@ -57,28 +51,28 @@ void kmain()
 
 	cache_init();						/*初始化cache.*/
 
-//	init_rootfs();						/*初始化根文件系统.*/
-
-//	tty_init();							/*初始化TTY设备.*/
+	model_startup();					/*初始化系统默认节点*/
 
 	kscheduinit();						/*初始化调度系统.*/
 
 	__asm__ volatile ("sti");			/*开全局中断.*/
+	module_init();						/*初始化系统模块*/
 
-//	ide_init();							/*初始化IDE设备.*/
-
-//	initializekeyboard();				/*初始化键盘驱动.*/
-
-//	create_initprocess((void*)0x00020000,256*1024);			
-										/*创建Init进程.*/
-
-//	run_initprocess();					/*执行Init进程，内核启动完成.*/
+	do_execl("/bin/Init","Hello World!");
+	do_execl("/Init","Hello World!");
+	do_execl("/bin/msh","Hello World!");
 
 	/*code can't be here.*/
-
 	printk("alloc @ %x malloced %dM",pool,(size_t)(pool-0x00400400)/(1024*1024));
 	printk("panic...");
-	while (1) {
+
+	int code;
+	extern int keyboard_kread(struct inode *pi,_co char *ptr,foff_t poff,_co foff_t *ptroff,int cnt);
+
+	while (1)
+	{
+		keyboard_kread(NULL,&code,0,NULL,1);
+		kprintf("%c",keymap[(code&0xFF)*3]);
 		hlt();
 		sti();
 	}
