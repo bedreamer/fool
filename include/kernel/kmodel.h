@@ -244,6 +244,7 @@ struct fs_struct
 	struct file_op *f_op;
 	struct dir_op *d_op;
 
+	int (*mkfs)(struct inode *);
 	int (*mount)(struct inode *,void **);
 	int (*umount)(struct inode *,void **);
 };
@@ -380,7 +381,8 @@ extern int sys_do_openfile(struct inode *,struct file **,unsigned int);
  *@pmdl: which module hold this region.
  *@rlst: port region list node.
  */
-struct ioport_region {
+struct ioport_region 
+{
 	unsigned short start;
 	unsigned short end;
 	unsigned short cnt;
