@@ -336,7 +336,7 @@ int sys_exit(_u32 ebx,_u32 ecx,_u32 edx,_u32 edi,_u32 esi)
 /*-----------------------------FILE----------------------------------*/
 int sys_open(_user_in_ const char *ufilename,unsigned int mode,_u32 edx,_u32 edi,_u32 esi)
 {
-	char cfilename[K_MAX_PATH_LEN+1]={0};
+	char cfilename[K_MAX_PATH_LEN+1]={0};/*可能是造成内核栈溢出的根源*/
 	struct mntpnt_struct *pmnt=NULL;
 
 	if (0==strncpfromuser(tsk_running->t_cr3,ufilename,cfilename,K_MAX_PATH_LEN)) 
@@ -366,7 +366,7 @@ int sys_open(_user_in_ const char *ufilename,unsigned int mode,_u32 edx,_u32 edi
 #define i esi
 	i = 0;
 	while ('/' != cfilename[i]) i++;
-	return sys_do_open(&cfilename[i],& pmnt -> mnt_root,mode);
+	return sys_do_open(& pmnt -> mnt_root,mode,&cfilename[i]);
 #undef i
 faile:
 	return INVALID;
@@ -380,8 +380,8 @@ int sys_write(int fd,_ui const char * ptr,foff_t offset,foff_t *poff,int cnt)
 		struct inode *pi;
 		if (NULL==pf) return EOF;
 		pi = pf->f_pi;
-		if (pi &&pi->f_op&&pi->f_op->write)
-			return pi->f_op->write(pf,ptr,offset,poff,cnt);
+		if (pi &&pi->i_data.f_op&&pi->i_data.f_op->write)
+			return pi->i_data.f_op->write(pf,ptr,offset,poff,cnt);
 	}
 	return EOF;
 }
@@ -394,8 +394,8 @@ int sys_read(int fd,_uo char * ptr,foff_t offset,foff_t *poff,int cnt)
 		struct inode *pi;
 		if (NULL==pf) return EOF;
 		pi = pf->f_pi;
-		if (pi &&pi->f_op&&pi->f_op->read)
-			return pi->f_op->read(pf,ptr,offset,poff,cnt);
+		if (pi &&pi->i_data.f_op&&pi->i_data.f_op->read)
+			return pi->i_data.f_op->read(pf,ptr,offset,poff,cnt);
 	}
 	return EOF;
 }

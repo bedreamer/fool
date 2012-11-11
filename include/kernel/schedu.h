@@ -86,8 +86,8 @@ struct kthread_struct
  *@t_pid: main pid of this task.
  *@t_level: task level[-2,-1,0,1,2].
  *@t_pparent: parent task struct ptr.
- *@t_flck: task file table lock.
  *@t_fcnt: how many file opend.
+ *@t_flck: task file table lock.
  *@t_file: opend file index array.
  */
 struct task_struct
@@ -108,8 +108,8 @@ struct task_struct
 
 	struct task_struct *t_pparent;
 
-	struct spin_lock t_flck;
 	size_t t_fcnt;
+	struct spin_lock t_flck;
 	struct file *t_file[K_MAX_FILE_OPEN_PPS];
 };
 

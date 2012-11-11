@@ -258,16 +258,13 @@ int dir_do_opendir(struct dir *pdir,_co struct dir **ppdir,_ci const char *noden
 	int result = dir_check_coredir(pdir,ppdir,nodename);
 	if (INVALID!=result&&NULL!=ppdir) return VALID;
 
-	struct itemattrib ditm={0};
-	result = dir_check_fsdir(pdir,&ditm,nodenmae);
+	struct itemattrib ditm={{0}};
+	result = dir_check_fsdir(pdir,&ditm,nodename);
 	if (INVALID==result) return INVALID;
-	if (NULL==pdir->d_op||NULL==pdir->d_op.opendir) return INVALID
+	if (NULL==pdir->d_op||NULL==pdir->d_op->opendir) return INVALID;
 
 	struct dir *p = dir_cache_alloc();
 	if (NULL==p) return INVALID;
-
-	result = pdir->d_op.opendir(pdir,&(p->d_data),nodename);
-	if (INVALID==result) goto faile;
 
 	spinlock_init(p->lck_d_child);
 	spinlock_init(p->lck_i_child);
@@ -275,13 +272,52 @@ int dir_do_opendir(struct dir *pdir,_co struct dir **ppdir,_ci const char *noden
 	p->d_child = NULL,p->i_child = NULL;
 	p->d_op = pdir -> d_op;
 
-	p->d_data.i_rcnt = 1;
+	p->d_data.i_rcnt = 0;
 	p->d_data.i_volnum = pdir->d_data.i_volnum;
 	p->d_data.d_parent=pdir;
 	p->d_data.i_root=pdir->d_data.i_root;
+
+	result = pdir->d_op->opendir(pdir,&(p->d_data),nodename);
+	if (INVALID==result) goto faile;
+	*ppdir = p;
 	return VALID;
 faile:
+	*ppdir = NULL;
 	dir_cache_free(p);
+	return INVALID;
+}
+
+/*打开非文件夹节点，如果节点不存在则失败*/
+int dir_do_openinode(struct dir *pdir,_co struct inode **ppi,_ci const char *nodename)
+{
+	if (NULL==pdir||NULL==ppi||NULL==nodename) return INVALID;
+
+	int result = dir_check_coreinode(pdir,ppi,nodename);
+	if (INVALID!=result) return VALID;
+
+	struct itemattrib ditm={{0}};
+	result = dir_check_fsinode(pdir,&ditm,nodename);
+	if (INVALID==result) return INVALID;
+	if (NULL==pdir->d_op||NULL==pdir->d_op->openinode) return INVALID;
+
+	struct inode *p = inode_cache_alloc();
+	if (NULL==p) return INVALID;
+
+	p->i_data.i_rcnt = 0;
+	p->i_data.i_volnum = pdir->d_data.i_volnum;
+	p->i_data.d_parent=pdir;
+	p->i_data.i_root=pdir->d_data.i_root;
+	list_ini(p->i_brother);
+	p->f_lst = NULL;
+	spinlock_init(p->lck_f_lst);
+
+	result = pdir->d_op->openinode(pdir,p,nodename);
+	if (INVALID==result) goto faile;
+	*ppi = p;
+	return VALID;
+faile:
+	*ppi = NULL;
+	inode_cache_free(p);
 	return INVALID;
 }
 
@@ -290,19 +326,41 @@ int dir_opendir_done(struct dir *pdir,_ci struct dir *ppdir)
 {
 	if (NULL==pdir||NULL==ppdir) return INVALID;
 	struct itemdata *pitm=NULL;
-	int result = dir_check_core_item(pdir,&pitm,ppdir->d_data.i_attrim.i_name);
-	if (INVALID!=result) return INVALID;
-	
-	get_spinlock(pdir->lck_d_child);
+	int result = dir_check_coreitem(pdir,&pitm,ppdir->d_data.i_attrib.i_name);
+	if (INVALID!=result) 
+		return pitm==&(ppdir->d_data)?VALID:INVALID;
 
+	get_spinlock(pdir->lck_d_child);
 	if (NULL==pdir->d_child) 
 	{
 		pdir->d_child = ppdir;
 		goto done;
 	}
-	list_inserttail(&(pdir->d_brother),&(ppdir->d_brother));
+	ppdir -> d_data.i_rcnt ++;
+	list_inserttail(&(pdir->d_child->d_brother),&(ppdir->d_brother));
 done:
 	release_spinlock(pdir->lck_d_child);
+	return VALID;
+}
+
+/*将需要打开的非文件节点添加到内核节点目录*/
+int dir_openinode_done(struct dir *pdir,_ci struct inode *pi)
+{
+	if (NULL==pdir||NULL==pi) return INVALID;
+	struct itemdata *pitm=NULL;
+	int result = dir_check_coreitem(pdir,&pitm,pi->i_data.i_attrib.i_name);
+	if (INVALID!=result) 
+		return pitm==&(pi->i_data)?VALID:INVALID;
+
+	get_spinlock(pdir->lck_i_child);
+	if (NULL==pdir->i_child) 
+	{
+		pdir->i_child = pi;
+		goto done;
+	}
+	list_inserttail(&(pdir->i_child->i_brother),&(pi->i_brother));
+done:
+	release_spinlock(pdir->lck_i_child);
 	return VALID;
 }
 
@@ -312,13 +370,13 @@ done:
 int dir_close_dir(struct dir *pdir,_ci struct dir *ppdir)
 {
 	if (NULL==pdir||NULL==ppdir) return INVALID;
-	if (pdir !=  ppdir->d_data.d_parant ) return INVALID;
+	if (pdir !=  ppdir->d_data.d_parent ) return INVALID;
 	struct dir *p=NULL;
-	int result = dir_check_core_dir(pdir,*p,ppdir->d_data.i_name);
+	int result = dir_check_coredir(pdir,&p,ppdir->d_data.i_attrib.i_name);
 	if (INVALID==result) return INVALID;
 	if (ppdir!=p) return INVALID;
 
-	get_spinlock(pdir->d_child);
+	get_spinlock(pdir->lck_d_child);
 	if (ppdir->d_brother.next==ppdir->d_brother.pre)
 	{
 		if (pdir->d_child == ppdir)
@@ -341,22 +399,110 @@ int dir_close_dir(struct dir *pdir,_ci struct dir *ppdir)
 		pdir->d_data.i_rcnt --;
 	}
 	result = VALID;
-	if (NULL!=pdir->d_op&&NULL!=pdir->d_op.closedir)
-		result = pdir->d_op.closedir(pdir,&(ppdir->d_data));
-	dir_cache_free(pdir);
-	memset(pdir,0,sizeof(struct dir));
-	release_spinlock(pdir->d_child);
+	if (NULL!=pdir->d_op&&NULL!=pdir->d_op->closedir)
+		result = pdir->d_op->closedir(pdir,&(ppdir->d_data));
+	dir_cache_free(ppdir);
+
+	/*在这里直接释放空间，如果有野指针指向这里可以被系统检测到*/
+	memset(ppdir,0,sizeof(struct dir));
+
+	release_spinlock(pdir->lck_d_child);
 	return result;
 error:
-	release_spinlock(pdir->d_child);
+	release_spinlock(pdir->lck_d_child);
 	return INVALID;
 }
 
-/*ufilename start with '/'*/
-int sys_do_open(const char *ufilename,struct dir *root,unsigned int mode)
+/*关闭节点，若节点的引用链表不为空则失败*/
+int dir_close_inode(struct dir *pdir,_ci struct inode *pi)
+{
+	if (NULL==pdir||NULL==pi) return INVALID;
+	if (pdir !=  pi->i_data.d_parent ) return INVALID;
+	struct inode *p=NULL;
+	int result = dir_check_coreinode(pdir,&p,pi->i_data.i_attrib.i_name);
+	if (INVALID==result) return INVALID;
+	if (pi!=p) return INVALID;
+
+	get_spinlock(pdir->lck_i_child);	
+	if (NULL!=pi->f_lst) goto error;
+
+	if (pi->i_brother.next==pi->i_brother.pre)
+	{
+		if (pdir->i_child == pi)
+		{
+			pdir->i_child = NULL;
+			pdir->d_data.i_rcnt --;
+		}
+		else
+		{
+			printk("Core crashd!");
+			goto error;
+		}
+	}
+	else
+	{
+		struct list_head *plst = pi->i_brother.next;
+		list_remove(&(pi->i_brother));
+		p = list_load(struct inode,i_brother,plst);
+		pdir->i_child = p;
+		pdir->d_data.i_rcnt --;
+	}
+	result = VALID;
+	if (NULL!=pdir->d_op&&NULL!=pdir->d_op->closeinode)
+		result = pdir->d_op->closeinode(pdir,pi);
+	inode_cache_free(pi);
+
+	/*在这里直接释放空间，如果有野指针指向这里可以被系统检测到*/
+	memset(pi,0,sizeof(struct inode));
+
+	release_spinlock(pdir->lck_i_child);
+	return result;
+error:
+	release_spinlock(pdir->lck_i_child);
+	return INVALID;
+}
+
+/*ufilename start with '/'
+ * 现在还没有添加对长文件名的支持，支持的最长文件节点名长为K_MAX_LEN_NODE_NAME
+ */
+int sys_do_open(struct dir *root,unsigned int mode,const char *ufilename)
+{
+	if (NULL==root||NULL==ufilename) return INVALID;
+	char nodename[K_MAX_LEN_NODE_NAME+1]={0};
+	int i=0,flg=0;
+	int result = detach_node(i++,ufilename,nodename,&flg,K_MAX_LEN_NODE_NAME);
+	struct dir *subdir=root,*p=NULL;
+	struct inode *pi=NULL;
+
+	while (1==flg)
+	{
+		result = dir_do_opendir(subdir,&p,nodename);
+		if (INVALID==result) goto subdir_error;
+		subdir = p;
+		result = detach_node(i++,ufilename,nodename,&flg,K_MAX_LEN_NODE_NAME);
+	}
+	/*现在subdir是nodename的上级目录*/
+	int result = dir_do_openinode(subdir,&pi,nodename);
+	if (INVALID==result) goto file_not_exsit;
+
+file_not_exsit:
+subdir_error:
+unexcept_error:
+	return INVALID;
+}
+
+/*检查任务是否打开过指定文件*/
+struct file* sys_check_taskfile(struct task_struct *ptsk,const struct inode *pi)
+{
+	return NULL;
+}
+
+/*设置任务打开的文件*/
+int sys_set_taskfile(struct task_struct *ptsk,const struct file *pf,int *pfd)
 {
 	return INVALID;
 }
+
 
 int register_device(struct device_base *dev)
 {

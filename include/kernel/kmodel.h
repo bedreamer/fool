@@ -30,6 +30,8 @@
  *        +--etc/
  *        .    +--environment
  *		  +--sbin/
+ *		  .    +--Init
+ *		  .	   +--mshell
  *	#	文件名格式 [0-26]:\{0-9a-zA-Z}*
  *	#	为常用的数据结构创建缓存池实现快速分配释放常用数据结构有
  *		+--struct dir;
@@ -145,6 +147,7 @@ struct owner_struct
  * @ i_volnum: 若为文件则表示节点所在卷号
  * @ d_parent: 父目录节点指针
  * @ i_root: 节点所在卷
+ * @ f_op: 作为字符设备或普通文件的接口
  */
 struct itemdata
 {
@@ -154,6 +157,7 @@ struct itemdata
 	unsigned char i_volnum; /* 0 ~ 25 */
 	struct dir *d_parent;
 	struct mntpnt_struct *i_root;
+	struct file_op *f_op;
 };
 
 /*在内核中表示一个打开的文件,可以是设备，也可以是普通文件.
@@ -161,6 +165,7 @@ struct itemdata
  * @ f_owner: 打开这个文件的进程信息。
  * @ f_mode: 打开模式
  * @ f_private: TTY驱动保留
+ * @ f_lst: inode链表节点
  */
 struct file
 {
@@ -169,22 +174,23 @@ struct file
 	unsigned int f_mode;
 
 	void *f_private;	/*For TTY driver.*/
+
+	struct list_head f_lst;
 };
 
 /*内核文件节点,可以是普通文件也可以是设备
- * @ f_op: 作为字符设备或普通文件的接口
- * @ d_op: 作为块设备时的操作接口.
  * @ i_brothers: 兄弟节点.
  * @ i_data: 节点通用信息.
+ * @ f_lst: 引用该节点的链表
+ * @ lck_f_lst: f_lst的访问控制锁
  */
 struct inode
 {
-	struct file_op *f_op;
-	struct dir_op *d_op;
-
 	struct list_head i_brother;
-
-	struct itemdata i_data;	
+	struct itemdata i_data;
+	
+	struct file *f_lst;
+	struct spin_lock lck_f_lst;
 };
 
 /*目录抽象结构
@@ -200,8 +206,10 @@ struct dir
 {
 	struct spin_lock lck_d_child;
 	struct dir *d_child;
+
 	struct spin_lock lck_i_child;
 	struct inode *i_child;
+
 	struct list_head d_brother;
 
 	struct dir_op *d_op;
@@ -291,13 +299,15 @@ struct file_op
 /*目录操作接口，块设备有效
  * 相对来说这个结构是针对内核提供的功能.
  * @ mknode: 在指定目录中创建新节点
- * @ touch: 在指定目录中创建非目录节点
+ * @ touch: 在指定目录中创建非文件节点
  * @ mkdir: 在指定目录中创建目录节点
  * @ rm : 删除非目录节点
  * @ rmdir: 删除目录节点
  * @ rename: 重命名节点
  * @ opendir: 仅限于打开一个文件夹节点
  * @ closedir: 仅限于关闭一个打开的文件夹节点
+ * @ openinode: 打开一个非文件夹节点
+ * @ closeinode: 关闭一个非文件夹节点
  * @ readitem: 按索引查找节点
  * @ readattrib: 读取指定节点的属性
  */
@@ -315,6 +325,9 @@ struct dir_op
 
 	int (*opendir)(struct dir *,_co struct itemdata *,_ci const char *);
 	int (*closedir)(struct dir *,struct itemdata *);
+	
+	int (*openinode)(struct dir *,_co struct inode *,_ci const char *);
+	int (*closeinode)(struct dir *,_co struct inode *);
 
 	int (*readitem)(struct dir *,_co struct itemattrib *,int);
 	int (*readattrib)(struct dir *,_co struct itemattrib *,_ci const char *);
@@ -338,11 +351,23 @@ extern int dir_check_dir(struct dir *,_co struct itemattrib *,_ci const char *);
 /*检查系统中是否存在指定的非文件夹节点*/
 extern int dir_check_inode(struct dir *,_co struct itemattrib *,_ci const char *);
 /*执行空间分配，初始化相关数据,但不添加节点到内核节点树中.到这一步节点已经打开成功.*/
-extern int dir_do_opendir(struct dir *,_co struct dir *,_ci const char *);
+extern int dir_do_opendir(struct dir *,_co struct dir **,_ci const char *);
+/*打开非文件夹节点，如果节点不存在则失败*/
+extern int dir_do_openinode(struct dir *,_co struct inode **,_ci const char *);
 /*打开成功后需要执行该函数将节点添加到内核节点树中.*/
 extern int dir_opendir_done(struct dir *,_ci struct dir *);
+/*将打开的节点添加到内核节点树中*/
+extern int dir_openinode_done(struct dir *,_ci struct inode *);
 /*将没有被引用的目录空间释放,匹配opendir中的分配操作.*/
 extern int dir_close_dir(struct dir *,_ci struct dir *);
+/*将没有被引用的节点空间释放*/
+extern int dir_close_inode(struct dir *,_ci struct inode *);
+/*返回打开文件的结果*/
+extern int sys_do_open(struct dir *,unsigned int,_ci const char *);
+/*检查任务是否打开过指定文件*/
+extern struct file* sys_check_taskfile(struct task_struct *,const struct inode *);
+/*设置任务打开的文件*/
+extern int sys_set_taskfile(struct task_struct *,const struct file *,int *);
 
 /* ioport region.
  *@start: region port start.
@@ -437,7 +462,6 @@ extern int unload_driver(dev_t devnum);
 
 extern int model_startup(void);
 extern int module_init(void);
-extern int sys_do_open(const char *,struct dir *,unsigned int);
 
 extern struct module *module_head;
 extern unsigned int moudule_cnt;
