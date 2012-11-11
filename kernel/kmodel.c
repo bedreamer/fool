@@ -321,6 +321,19 @@ faile:
 	return INVALID;
 }
 
+/*打开文件节点，若文件节点不存在则创建节点*/
+int dir_do_opennewinode(struct dir *pdir,_co struct inode **ppi,_ci const char *nodename)
+{
+	if (NULL==pdir||NULL==ppi||NULL==nodename) return INVALID;
+	if (NULL==pdir->d_op||NULL==pdir->d_op->touch) return INVALID;
+	if (NULL==pdir->d_op||NULL==pdir->d_op->openinode) return INVALID;
+
+	struct itemattrib itm={{0}};
+	int result = pdir->d_op->touch(pdir,&itm,nodename);
+	if (INVALID==result) return INVALID;
+	return dir_do_openinode(pdir,ppi,nodename);
+}
+
 /*打开成功后需要执行该函数将节点添加到内核节点树中.*/
 int dir_opendir_done(struct dir *pdir,_ci struct dir *ppdir)
 {
@@ -469,40 +482,102 @@ int sys_do_open(struct dir *root,unsigned int mode,const char *ufilename)
 {
 	if (NULL==root||NULL==ufilename) return INVALID;
 	char nodename[K_MAX_LEN_NODE_NAME+1]={0};
-	int i=0,flg=0;
+	int i=0,flg=0,fd=-1;
 	int result = detach_node(i++,ufilename,nodename,&flg,K_MAX_LEN_NODE_NAME);
 	struct dir *subdir=root,*p=NULL;
 	struct inode *pi=NULL;
+	struct file *pf=NULL;
 
 	while (1==flg)
 	{
 		result = dir_do_opendir(subdir,&p,nodename);
-		if (INVALID==result) goto subdir_error;
+		if (INVALID==result) goto error;
 		subdir = p;
 		result = detach_node(i++,ufilename,nodename,&flg,K_MAX_LEN_NODE_NAME);
 	}
 	/*现在subdir是nodename的上级目录*/
-	int result = dir_do_openinode(subdir,&pi,nodename);
-	if (INVALID==result) goto file_not_exsit;
+	result = dir_do_openinode(subdir,&pi,nodename);
+	if (INVALID==result) goto error;
 
-file_not_exsit:
-subdir_error:
-unexcept_error:
+	fd = sys_check_taskfile(tsk_running,pi);
+	if (INVALID!=fd) 
+		return mode==tsk_running->t_file[fd]->f_mode ? fd : INVALID;
+	result = sys_do_openfile(pi,&pf,mode);
+	if (INVALID==result) goto error;
+	return sys_set_taskfile(tsk_running,pf);
+error:
 	return INVALID;
 }
 
 /*检查任务是否打开过指定文件*/
-struct file* sys_check_taskfile(struct task_struct *ptsk,const struct inode *pi)
+int sys_check_taskfile(struct task_struct *ptsk,const struct inode *pi)
 {
-	return NULL;
+	int i,fd=INVALID;
+
+	get_spinlock(ptsk->t_flck);
+	for (i=0;i<K_MAX_FILE_OPEN_PPS;i++)
+		if (NULL!=ptsk->t_file[i]&&pi==ptsk->t_file[i]->f_pi){
+			fd = i;
+			break;
+		}
+	release_spinlock(ptsk->t_flck);
+	return fd;
 }
 
 /*设置任务打开的文件*/
-int sys_set_taskfile(struct task_struct *ptsk,const struct file *pf,int *pfd)
+int sys_set_taskfile(struct task_struct *ptsk,struct file *pf)
 {
-	return INVALID;
+	int i,fd=INVALID;
+
+	get_spinlock(ptsk->t_flck);
+	if (ptsk->t_fcnt>=K_MAX_FILE_OPEN_PPS) goto end;
+	for (i=3;i<K_MAX_FILE_OPEN_PPS;i++)
+		if (NULL==ptsk->t_file[i])
+		{
+			ptsk->t_file[i] = pf;
+			ptsk->t_fcnt ++;
+			fd = i;
+			break;
+		}
+end:
+	release_spinlock(ptsk->t_flck);
+	return fd;
+
 }
 
+/*打开指定的节点*/
+int sys_do_openfile(struct inode *pi,struct file **ppf,unsigned int mode)
+{
+	if (NULL==pi||NULL==ppf) return INVALID;
+	struct file *pf = file_cache_alloc();
+	if (NULL==pf) return INVALID;
+	pf->f_pi = pi;
+	pf->f_owner.ptsk = tsk_running;
+	pf->f_owner.pthsk = thr_running;
+	pf->f_private = NULL;
+	pf->f_mode = mode;
+	list_ini(pf->f_lst);
+	if (NULL==pi->i_data.f_op) goto done;
+	if (NULL==pi->i_data.f_op->open) goto done;
+	int result = pi->i_data.f_op->open(pf,pi);
+	if (INVALID!=result) goto done;
+	file_cache_free(pf);
+	*ppf = NULL;
+
+	return INVALID;
+done:
+	*ppf = pf;
+	get_spinlock(pi->lck_f_lst);
+	if (NULL==pi->f_lst)
+	{
+		pi->f_lst = pf;
+		goto out;
+	}
+	list_inserttail(&(pi->f_lst->f_lst),&(pf->f_lst));
+out:
+	release_spinlock(pi->lck_f_lst);
+	return VALID;
+}
 
 int register_device(struct device_base *dev)
 {
