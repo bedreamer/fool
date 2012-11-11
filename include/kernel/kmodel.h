@@ -188,7 +188,7 @@ struct inode
 {
 	struct list_head i_brother;
 	struct itemdata i_data;
-	
+
 	struct file *f_lst;
 	struct spin_lock lck_f_lst;
 };
@@ -325,7 +325,7 @@ struct dir_op
 
 	int (*opendir)(struct dir *,_co struct itemdata *,_ci const char *);
 	int (*closedir)(struct dir *,struct itemdata *);
-	
+
 	int (*openinode)(struct dir *,_co struct inode *,_ci const char *);
 	int (*closeinode)(struct dir *,_co struct inode *);
 
@@ -354,6 +354,8 @@ extern int dir_check_inode(struct dir *,_co struct itemattrib *,_ci const char *
 extern int dir_do_opendir(struct dir *,_co struct dir **,_ci const char *);
 /*打开非文件夹节点，如果节点不存在则失败*/
 extern int dir_do_openinode(struct dir *,_co struct inode **,_ci const char *);
+/*打开文件节点，若文件节点不存在则创建节点*/
+extern int dir_do_opennewinode(struct dir *,_co struct inode **,_ci const char *);
 /*打开成功后需要执行该函数将节点添加到内核节点树中.*/
 extern int dir_opendir_done(struct dir *,_ci struct dir *);
 /*将打开的节点添加到内核节点树中*/
@@ -365,9 +367,11 @@ extern int dir_close_inode(struct dir *,_ci struct inode *);
 /*返回打开文件的结果*/
 extern int sys_do_open(struct dir *,unsigned int,_ci const char *);
 /*检查任务是否打开过指定文件*/
-extern struct file* sys_check_taskfile(struct task_struct *,const struct inode *);
+extern int sys_check_taskfile(struct task_struct *,const struct inode *);
 /*设置任务打开的文件*/
-extern int sys_set_taskfile(struct task_struct *,const struct file *,int *);
+extern int sys_set_taskfile(struct task_struct *,struct file *);
+/*打开指定的文件节点*/
+extern int sys_do_openfile(struct inode *,struct file **,unsigned int);
 
 /* ioport region.
  *@start: region port start.
