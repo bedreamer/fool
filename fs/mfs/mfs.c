@@ -74,6 +74,7 @@ int mfs_mkfs(struct inode *pi,const char *lable)
 {
 	if (NULL==pi||ITYPE_BLK_DEV!=pi->i_data.i_attrib.i_type) return INVALID;
 	if (MFS_NEED_MIN_SCTS>pi->i_data.i_attrib.i_size) return INVALID;
+	if (NULL==pi->i_data.f_op||NULL==pi->i_data.f_op->kwrite) return INVALID;
 
 	struct mfs_super_blk msb={0};
 
@@ -94,6 +95,27 @@ int mfs_mkfs(struct inode *pi,const char *lable)
 
 	/*计算root目录的簇号*/
 	msb.clst_root = MFS_CMAP_CLUSTER + cmapclusters;
+
+	char buf[SECTOR_SIZE]={0};
+	size_t i=0,j=0,remain=cmapclusters;
+	int sctnum = MFS_CMAP_CLUSTER*MFS_SCTS_PERCLUSTER;
+
+	/*初始化CMAP*/
+	memset(buf,1,SECTOR_SIZE);
+	while (remain>=SECTOR_SIZE*sizeof(char))
+	{
+		pi->i_data.f_op->kwrite(&(pi->i_data),buf,sctnum++,1);
+		j ++;
+		remain -= SECTOR_SIZE*sizeof(char);
+	}
+	memset(buf,0,SECTOR_SIZE);
+	for (;j<cmapclusters;j++,i ++ )
+	{
+		bitset(i,buf);
+	}
+	pi->i_data.f_op->kwrite(&(pi->i_data),buf,sctnum,1);
+
+	return mfsw_superblk(&(pi->i_data),&msb);
 }
 
 /*仅仅用来通知文件系统驱动*/
@@ -253,5 +275,77 @@ int mfsr_superblk(struct itemdata *pi,struct mfs_super_blk *psblk)
 int mfsw_superblk(struct itemdata *pi,const struct mfs_super_blk *psblk)
 {
 	return mfsw_device_ex(pi,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
+}
+
+/*分配一个cluster*/
+size_t mfs_alloc_cluster(struct itemdata *pitm,struct mfs_super_blk *psblk)
+{
+	return MFS_INVALID_CLUSTER;
+}
+
+/*释放一个cluster*/
+void mfs_free_cluster(struct itemdata *pitd,struct mfs_super_blk *psblk,size_t clsnum)
+{
+}
+
+/*---------------------------------------------------------------------------------------*/
+/*在指定目录中创建一个非文件节点*/
+int mfs_do_mkinode(struct itemdata *pdir,struct itemattrib *pitm,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+/*从指定的目录中删除一个非文件夹节点*/
+int mfs_do_rminode(struct itemdata *pdir,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+/*在指定目录中创建一个目录*/
+int mfs_do_mkdir(struct itemdata *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+/*从指定目录中删除一个目录节点*/
+int mfs_do_rmdir(struct itemdata *pdir,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+/*检查目录中是否存在指定的节点*/
+int mfs_do_checkitem(struct itemdata *pdir,_co struct itemattrib *pitm,_co const char *nodename)
+{
+	if (NULL==pdir||NULL==nodename) return INVALID;
+}
+
+/*更新一个节点的基本信息*/
+int mfs_do_updateitem(struct itemdata *pdir,_ci struct itemattrib *pitm,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+/*打开一个非文件节点*/
+int mfs_do_openinode(struct itemdata *pdir,_co struct itemdata *ppitd,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+/*打开一个文件夹节点*/
+int mfs_do_opendir(struct itemdata *pdir,_co struct itemdata *ppitd,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+/*关闭一个非文件夹节点*/
+int mfs_do_closeinode(struct itemdata *pdir,_ci struct itemdata *ppitd)
+{
+	return INVALID;
+}
+
+/*关闭一个文件夹节点*/
+int mfs_do_closedir(struct itemdata *pdir,_ci struct itemdata *ppitd)
+{
+	return INVALID;
 }
 
