@@ -88,9 +88,10 @@ struct itemattrib
 	date_t d_lastaccess;
 	size_t i_size;
 	unsigned int i_type;
-#define ITYPE_ARCHIVE	0x00000001
-#define ITYPE_DIR		0x00000002
-#define ITYPE_DEVICE	0x00000010
+#define ITYPE_ALIVE		0x10000000
+#define ITYPE_ARCHIVE	(ITYPE_ALIVE|0x00000001)
+#define ITYPE_DIR		(ITYPE_ALIVE|0x00000002)
+#define ITYPE_DEVICE	(ITYPE_ALIVE|0x00000010)
 #define ITYPE_CHAR_DEV	(ITYPE_DEVICE|0x00000004)
 #define ITYPE_BLK_DEV	(ITYPE_DEVICE|0x00000008)
 	dev_t i_devnum;
@@ -144,7 +145,7 @@ struct owner_struct
 
 /* 节点通用信息
  * @ i_attrib: 节点属性
- * @ i_private: 节点私有数据
+ * @ i_private: 文件系统或设备节点私有数据
  * @ i_rcnt: 节点被引用次数
  * @ i_volnum: 若为文件则表示节点所在卷号
  * @ d_parent: 父目录节点指针
@@ -158,8 +159,10 @@ struct itemdata
 	void *i_private;
 	unsigned int i_rcnt;
 	unsigned char i_volnum; /* 0 ~ 25 */
+
 	struct dir *d_parent;
 	struct mntpnt_struct *i_root;
+
 	struct dir_op *d_op;
 	struct file_op *f_op;
 };
@@ -246,7 +249,7 @@ struct fs_struct
 	struct dir_op *d_op;
 
 	int (*mkfs)(struct inode *,const char *);
-	int (*mount)(struct inode *,void **);
+	int (*mount)(struct inode *,struct itemdata *,void **);
 	int (*umount)(struct inode *,void **);
 };
 extern int register_fs(struct fs_struct *);

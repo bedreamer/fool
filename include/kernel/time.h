@@ -28,7 +28,25 @@ struct sys_time
 };
 
 void getsystime(struct sys_time *);
-unsigned short gettime(void);
-unsigned short getdate(void);
+
+/* 
+ * time_t
+  +--------+--------+--------+--------+
+  + unused +  hour  +   min  +  sec   +
+  +--------+--------+--------+--------+
+  31       23       15       7        0
+ */
+#define MAKETIME(hour,min,sec) (((hour&0x000000FF)<<16)|((min&0x000000FF)<<8)|((sec&0x000000FF)))
+/* 
+ * date_t
+  +--------+--------+--------+--------+
+  +  year  + month  +   day  +weekday +
+  +--------+--------+--------+--------+
+  31       23       15       7        0
+ */
+#define MAKEDATE(year,month,day,weekday) (((year&0x000000FF)<<24)|((month&0x000000FF)<<16)|((day&0x000000FF)<<8)|((weekday&0x000000FF)))
+
+time_t gettime(void);
+date_t getdate(void);
 
 #endif // _TIME_

@@ -26,21 +26,23 @@
 #define MFS_CMAP_CLUSTER		1
 /*无效的簇号*/
 #define MFS_INVALID_CLUSTER		0
+/*每个扇区可以有几个inode*/
+#define MFS_INODES_PER_SCT		8
 
 /*MFS 节点信息 */
 #pragma pack(1)
 struct mfs_inode 
 {
 	unsigned char m_name[K_MAX_LEN_NODE_NAME];	//14 bytes
-	unsigned char m_unused[10];					//10 bytes
+	unsigned char m_unused[2];					// 2 bytes
 	size_t m_size;								// 4 bytes
 	unsigned int m_attrib;						// 4 bytes
 	unsigned int m_devnum;						// 4 bytes
 
-	time_t t_create;							// 2 bytes
-	date_t d_create;							// 2 bytes
-	time_t t_lastaccess;						// 2 bytes
-	date_t d_lastaccess;						// 2 bytes
+	time_t t_create;							// 4 bytes
+	date_t d_create;							// 4 bytes
+	time_t t_lastaccess;						// 4 bytes
+	date_t d_lastaccess;						// 4 bytes
 	clust_t i_fat[MFS_FAT_CNT];					//20 bytes
 	/* 作为文件时
 	 * i_fat[0] --> 一级指针直接指向数据块 1 * 4K = 4K
@@ -83,6 +85,7 @@ struct mfs_super_blk
  *@m_inum: 该节点在该簇中的索引号.
  *@m_super: 所在分区的超级块结构,该数据在挂载点的私有数据中保存
  *@m_itm: 节点的其他属性.
+ *@lck_i_fat: 访问i_fat的读写锁
  *@i_fat: 该节点对应额分配表.
  */
 struct mfs_core
@@ -91,11 +94,13 @@ struct mfs_core
 	size_t  m_inum;
 	struct mfs_super_blk* m_super;
 	struct itemattrib *m_itm;
+
+	struct spin_lock lck_i_fat;
 	clust_t i_fat[MFS_FAT_CNT];
 };
 
 extern int mfs_mkfs(struct inode *,const char *);
-extern int mfs_mount(struct inode *,void **);
+extern int mfs_mount(struct inode *,struct itemdata *,void **);
 extern int mfs_umount(struct inode *,void **);
 
 extern int mfs_open(struct file *,struct inode *);
@@ -145,7 +150,11 @@ extern int mfs_do_mkdir(struct itemdata *,_co struct itemattrib *,_ci const char
 /*从指定目录中删除一个目录节点*/
 extern int mfs_do_rmdir(struct itemdata *,_ci const char *);
 /*检查目录中是否存在指定的节点*/
-extern int mfs_do_checkitem(struct itemdata *,_co struct itemattrib *,_co const char *);
+extern int mfs_do_checkitem(struct itemdata *,_co struct itemattrib *,_ci const char *);
+/*检查簇中是否有指定节点*/
+extern int mfs_do_checkite_inclst(struct itemdata *,_co struct itemattrib *,clust_t,_ci const char *);
+/*检查指定的扇区中是否存在指定节点*/
+extern int mfs_do_checkitem_insct(struct itemdata *,_co struct itemattrib *,size_t,_ci const char *);
 /*更新一个节点的基本信息*/
 extern int mfs_do_updateitem(struct itemdata *,_ci struct itemattrib *,_ci const char *);
 /*打开一个非文件节点*/

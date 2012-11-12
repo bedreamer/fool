@@ -22,3 +22,13 @@ void getsystime(struct sys_time *st)
 	st->t_year=asm_readcmos(CMOS_REG_YEAR);
 	st->t_year=((st->t_year&0xF0)>>4)*10+(st->t_hour&0x0F);
 }
+
+time_t gettime(void)
+{
+	return MAKETIME(asm_readcmos(CMOS_REG_HOUR),asm_readcmos(CMOS_REG_MIN),asm_readcmos(CMOS_REG_SEC));
+}
+
+date_t getdate(void)
+{
+	return MAKEDATE(asm_readcmos(CMOS_REG_YEAR),asm_readcmos(CMOS_REG_MONTH),asm_readcmos(CMOS_REG_DAY),asm_readcmos(CMOS_REG_WEEKDAY));
+}

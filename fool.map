@@ -171,7 +171,7 @@ Address of section .text set to 0x1001000
  *(.iplt)
  .iplt          0x0000000000000000        0x0 kernel/_start.o
 
-.text           0x0000000001001000     0x873d
+.text           0x0000000001001000     0x8f21
  *(.text.unlikely .text.*_unlikely)
  *(.text.exit .text.exit.*)
  *(.text.startup .text.startup.*)
@@ -356,226 +356,239 @@ Address of section .text set to 0x1001000
                 0x0000000001005582                wait
                 0x000000000100558c                signal
  *fill*         0x0000000001005596        0x2 90909090
- .text          0x0000000001005598      0x188 kernel/time.o
+ .text          0x0000000001005598      0x228 kernel/time.o
                 0x0000000001005598                getsystime
- .text          0x0000000001005720      0x326 kernel/cache.o
-                0x0000000001005720                kcache_create
-                0x00000000010057cf                kcache_destroy
-                0x0000000001005803                kcache_malloc
-                0x00000000010058b9                kcache_free
-                0x000000000100592d                cache_init
-                0x00000000010059b9                dir_cache_alloc
-                0x00000000010059cd                inode_cache_alloc
-                0x00000000010059e1                file_cache_alloc
-                0x00000000010059f5                dir_cache_free
-                0x0000000001005a10                inode_cache_free
-                0x0000000001005a2b                file_cache_free
- *fill*         0x0000000001005a46        0x2 90909090
- .text          0x0000000001005a48       0x26 kernel/exec.o
-                0x0000000001005a48                do_execl
-                0x0000000001005a5b                do_execv
- *fill*         0x0000000001005a6e        0x2 90909090
- .text          0x0000000001005a70       0x4a mm/kmalloc.o
-                0x0000000001005a70                kmalloc
-                0x0000000001005ab5                kfree
- *fill*         0x0000000001005aba        0x2 90909090
- .text          0x0000000001005abc      0x5b8 mm/mm.o
-                0x0000000001005abc                mm_inipool
-                0x0000000001005b4a                mm_malloc
-                0x0000000001005b9e                mm_free
-                0x0000000001006038                mm_appendpool
- .text          0x0000000001006074      0x8bf mm/page.o
-                0x00000000010060f0                startpage
-                0x00000000010061e6                allocpage
-                0x000000000100622e                freepage
-                0x000000000100624a                pmap
-                0x000000000100634e                publicmap16M2to32M
-                0x00000000010063b9                allocspace
-                0x00000000010064ae                cp2user
-                0x0000000001006588                cpfromuser
-                0x0000000001006662                strncpfromuser
-                0x0000000001006749                strncp2user
-                0x0000000001006830                cpbyte2user
-                0x000000000100685f                cpword2user
-                0x000000000100688f                cpdword2user
-                0x00000000010068b8                cpbytefromuser
-                0x00000000010068e1                cpwordfromuser
-                0x000000000100690a                cpdwordfromuser
- *fill*         0x0000000001006933        0x1 90909090
- .text          0x0000000001006934      0x82b drivers/ide.o
-                0x0000000001006934                ide0_handle
-                0x000000000100699f                ide1_handle
-                0x0000000001006a0a                ide_wait_interrupt
-                0x0000000001006aaa                ide_wait_status
-                0x0000000001006b4c                ide_exec_cmd
-                0x0000000001006cab                ide_read_sct
-                0x0000000001006e7c                ide_write_sct
-                0x0000000001007064                ide_struct_alloc
-                0x00000000010070da                ide_device_scan_partation
-                0x00000000010070df                ide_device_scan
-                0x00000000010070e4                ide_open
-                0x00000000010070ee                ide_ioctl
-                0x00000000010070f8                ide_read
-                0x0000000001007100                ide_write
-                0x0000000001007108                ide_c_read
-                0x0000000001007110                ide_c_write
-                0x0000000001007118                ide_startup
- *fill*         0x000000000100715f        0x1 90909090
- .text          0x0000000001007160        0x0 drivers/keymap_US.o
- .text          0x0000000001007160      0x63b drivers/keyboard.o
-                0x0000000001007160                keyboard_startup
-                0x00000000010071c9                init8042
-                0x00000000010071dd                _8042readscancode
-                0x00000000010071f1                _8042cmdmourse
-                0x000000000100720d                _8042setresolution1x1
-                0x000000000100722e                _8042setresolution2x1
-                0x000000000100724f                _8042setresolution
-                0x000000000100728a                _8042getmourseinfo
-                0x00000000010072f3                _8042setled
-                0x000000000100732c                _8042detect
-                0x0000000001007354                _8042keyboardenable
-                0x0000000001007370                _8042mourseenable
-                0x0000000001007391                keyboardhandle
-                0x0000000001007565                makescancode
-                0x00000000010076c1                keyboard_open
-                0x00000000010076cb                keyboard_close
-                0x00000000010076d5                keyboard_read
-                0x0000000001007746                keyboard_ioctl
-                0x0000000001007750                keyboard_kread
- *fill*         0x000000000100779b        0x1 90909090
- .text          0x000000000100779c       0xae drivers/console.o
-                0x000000000100779c                tty_startup
-                0x0000000001007804                console_open
-                0x000000000100780e                console_close
-                0x0000000001007818                console_read
-                0x0000000001007822                console_write
-                0x000000000100782c                console_ioctl
-                0x0000000001007836                console_kread
-                0x0000000001007840                console_kwrite
- *fill*         0x000000000100784a        0x2 90909090
- .text          0x000000000100784c      0x50b drivers/vga.o
-                0x000000000100788d                vga_startup
-                0x00000000010078fa                vga_open
-                0x0000000001007904                vga_close
-                0x000000000100790e                vga_read
-                0x000000000100796a                vga_write
-                0x00000000010079c6                vga_ioctl
-                0x0000000001007a68                vga_kread
-                0x0000000001007ab7                vga_kwrite
-                0x0000000001007b06                vga_reset
-                0x0000000001007b5a                vga_eraselines
-                0x0000000001007bfb                vga_erasearea
-                0x0000000001007c16                vga_setdisline
-                0x0000000001007cb1                vga_setcursorpos
-                0x0000000001007d43                vga_hidecursor
-                0x0000000001007d4d                vga_showcursor
- *fill*         0x0000000001007d57        0x1 90909090
- .text          0x0000000001007d58      0x60b fs/mfs/mfs.o
-                0x0000000001007d58                mfs_startup
-                0x0000000001007d80                mfs_mount
-                0x0000000001007e4a                mfs_umount
-                0x0000000001007e90                mfs_mkfs
-                0x0000000001007f52                mfs_open
-                0x0000000001007f5c                mfs_close
-                0x0000000001007f66                mfs_read
-                0x0000000001007f70                mfs_write
-                0x0000000001007f7a                mfs_ioctl
-                0x0000000001007f84                mfs_kread
-                0x0000000001007f8e                mfs_kwrite
-                0x0000000001007f98                mfs_mknode
-                0x0000000001007fa2                mfs_touch
-                0x0000000001007fac                mfs_mkdir
-                0x0000000001007fb6                mfs_rm
-                0x0000000001007fc0                mfs_rmdir
-                0x0000000001007fca                mfs_rename
-                0x0000000001007fd4                mfs_opendir
-                0x0000000001007fde                mfs_closedir
-                0x0000000001007fe8                mfs_openinode
-                0x0000000001007ff2                mfs_closeinode
-                0x0000000001007ffc                mfs_readitem
-                0x0000000001008006                mfs_readattrib
-                0x0000000001008010                mfsr_device
-                0x000000000100807b                mfsr_device_ex
-                0x0000000001008170                mfsw_device
-                0x00000000010081db                mfsw_device_ex
-                0x00000000010082ff                mfsr_superblk
-                0x0000000001008331                mfsw_superblk
- *fill*         0x0000000001008363        0x1 90909090
- .text          0x0000000001008364      0x8dc .obj/libdcrt.a(dstring.o)
-                0x0000000001008364                memcpy
-                0x00000000010083a2                memmove
-                0x000000000100842d                memset
-                0x0000000001008466                strcat
-                0x00000000010084b3                strcmp
-                0x00000000010084fe                strcpy
-                0x0000000001008537                strlen
-                0x0000000001008565                strncmp
-                0x00000000010085bf                strncpy
-                0x0000000001008607                strnlen
-                0x0000000001008640                strstr
-                0x00000000010086d1                tolower
-                0x0000000001008725                tonlower
-                0x0000000001008788                tonupper
-                0x00000000010087eb                toupper
-                0x000000000100883f                wstrcat
-                0x000000000100888f                wstrcmp
-                0x00000000010088db                wstrcpy
-                0x0000000001008916                wstrlen
-                0x0000000001008945                wstrncmp
-                0x00000000010089a0                wstrncpy
-                0x00000000010089ea                wstrnlen
-                0x0000000001008a24                wstrstr
-                0x0000000001008aba                wtolower
-                0x0000000001008b14                wtonlower
-                0x0000000001008b7d                wtonupper
-                0x0000000001008be6                wtoupper
- .text          0x0000000001008c40      0x9a9 .obj/libdcrt.a(dstdlib.o)
-                0x0000000001008c40                atoi
-                0x0000000001008ddf                itoa
-                0x0000000001008f11                itox
-                0x0000000001008fc0                itob
-                0x000000000100900a                atoll
-                0x0000000001009282                lltoa
-                0x000000000100929b                lltox
-                0x00000000010092b4                var_arg
-                0x0000000001009305                vsprintf
-                0x00000000010094a1                sprintf
-                0x00000000010094df                detach_node
- *fill*         0x00000000010095e9        0x3 90909090
- .text          0x00000000010095ec      0x151 .obj/libdcrt.a(dbits.o)
-                0x00000000010095ec                bitset
-                0x0000000001009621                bitclean
-                0x0000000001009652                bitsset
-                0x0000000001009657                bitsclean
-                0x0000000001009665                bitread
-                0x000000000100968f                bitrevers
-                0x00000000010096c4                test0andset
-                0x0000000001009700                test1andset
+                0x0000000001005720                gettime
+                0x0000000001005766                getdate
+ .text          0x00000000010057c0      0x326 kernel/cache.o
+                0x00000000010057c0                kcache_create
+                0x000000000100586f                kcache_destroy
+                0x00000000010058a3                kcache_malloc
+                0x0000000001005959                kcache_free
+                0x00000000010059cd                cache_init
+                0x0000000001005a59                dir_cache_alloc
+                0x0000000001005a6d                inode_cache_alloc
+                0x0000000001005a81                file_cache_alloc
+                0x0000000001005a95                dir_cache_free
+                0x0000000001005ab0                inode_cache_free
+                0x0000000001005acb                file_cache_free
+ *fill*         0x0000000001005ae6        0x2 90909090
+ .text          0x0000000001005ae8       0x26 kernel/exec.o
+                0x0000000001005ae8                do_execl
+                0x0000000001005afb                do_execv
+ *fill*         0x0000000001005b0e        0x2 90909090
+ .text          0x0000000001005b10       0x4a mm/kmalloc.o
+                0x0000000001005b10                kmalloc
+                0x0000000001005b55                kfree
+ *fill*         0x0000000001005b5a        0x2 90909090
+ .text          0x0000000001005b5c      0x5b8 mm/mm.o
+                0x0000000001005b5c                mm_inipool
+                0x0000000001005bea                mm_malloc
+                0x0000000001005c3e                mm_free
+                0x00000000010060d8                mm_appendpool
+ .text          0x0000000001006114      0x8bf mm/page.o
+                0x0000000001006190                startpage
+                0x0000000001006286                allocpage
+                0x00000000010062ce                freepage
+                0x00000000010062ea                pmap
+                0x00000000010063ee                publicmap16M2to32M
+                0x0000000001006459                allocspace
+                0x000000000100654e                cp2user
+                0x0000000001006628                cpfromuser
+                0x0000000001006702                strncpfromuser
+                0x00000000010067e9                strncp2user
+                0x00000000010068d0                cpbyte2user
+                0x00000000010068ff                cpword2user
+                0x000000000100692f                cpdword2user
+                0x0000000001006958                cpbytefromuser
+                0x0000000001006981                cpwordfromuser
+                0x00000000010069aa                cpdwordfromuser
+ *fill*         0x00000000010069d3        0x1 90909090
+ .text          0x00000000010069d4      0x82b drivers/ide.o
+                0x00000000010069d4                ide0_handle
+                0x0000000001006a3f                ide1_handle
+                0x0000000001006aaa                ide_wait_interrupt
+                0x0000000001006b4a                ide_wait_status
+                0x0000000001006bec                ide_exec_cmd
+                0x0000000001006d4b                ide_read_sct
+                0x0000000001006f1c                ide_write_sct
+                0x0000000001007104                ide_struct_alloc
+                0x000000000100717a                ide_device_scan_partation
+                0x000000000100717f                ide_device_scan
+                0x0000000001007184                ide_open
+                0x000000000100718e                ide_ioctl
+                0x0000000001007198                ide_read
+                0x00000000010071a0                ide_write
+                0x00000000010071a8                ide_c_read
+                0x00000000010071b0                ide_c_write
+                0x00000000010071b8                ide_startup
+ *fill*         0x00000000010071ff        0x1 90909090
+ .text          0x0000000001007200        0x0 drivers/keymap_US.o
+ .text          0x0000000001007200      0x63b drivers/keyboard.o
+                0x0000000001007200                keyboard_startup
+                0x0000000001007269                init8042
+                0x000000000100727d                _8042readscancode
+                0x0000000001007291                _8042cmdmourse
+                0x00000000010072ad                _8042setresolution1x1
+                0x00000000010072ce                _8042setresolution2x1
+                0x00000000010072ef                _8042setresolution
+                0x000000000100732a                _8042getmourseinfo
+                0x0000000001007393                _8042setled
+                0x00000000010073cc                _8042detect
+                0x00000000010073f4                _8042keyboardenable
+                0x0000000001007410                _8042mourseenable
+                0x0000000001007431                keyboardhandle
+                0x0000000001007605                makescancode
+                0x0000000001007761                keyboard_open
+                0x000000000100776b                keyboard_close
+                0x0000000001007775                keyboard_read
+                0x00000000010077e6                keyboard_ioctl
+                0x00000000010077f0                keyboard_kread
+ *fill*         0x000000000100783b        0x1 90909090
+ .text          0x000000000100783c       0xae drivers/console.o
+                0x000000000100783c                tty_startup
+                0x00000000010078a4                console_open
+                0x00000000010078ae                console_close
+                0x00000000010078b8                console_read
+                0x00000000010078c2                console_write
+                0x00000000010078cc                console_ioctl
+                0x00000000010078d6                console_kread
+                0x00000000010078e0                console_kwrite
+ *fill*         0x00000000010078ea        0x2 90909090
+ .text          0x00000000010078ec      0x50b drivers/vga.o
+                0x000000000100792d                vga_startup
+                0x000000000100799a                vga_open
+                0x00000000010079a4                vga_close
+                0x00000000010079ae                vga_read
+                0x0000000001007a0a                vga_write
+                0x0000000001007a66                vga_ioctl
+                0x0000000001007b08                vga_kread
+                0x0000000001007b57                vga_kwrite
+                0x0000000001007ba6                vga_reset
+                0x0000000001007bfa                vga_eraselines
+                0x0000000001007c9b                vga_erasearea
+                0x0000000001007cb6                vga_setdisline
+                0x0000000001007d51                vga_setcursorpos
+                0x0000000001007de3                vga_hidecursor
+                0x0000000001007ded                vga_showcursor
+ *fill*         0x0000000001007df7        0x1 90909090
+ .text          0x0000000001007df8      0xd50 fs/mfs/mfs.o
+                0x0000000001007df8                mfs_startup
+                0x0000000001007e20                mfs_mount
+                0x0000000001007eea                mfs_umount
+                0x0000000001007f30                mfs_mkfs
+                0x0000000001008134                mfs_open
+                0x000000000100813e                mfs_close
+                0x0000000001008148                mfs_read
+                0x0000000001008152                mfs_write
+                0x000000000100815c                mfs_ioctl
+                0x0000000001008166                mfs_kread
+                0x0000000001008170                mfs_kwrite
+                0x000000000100817a                mfs_mknode
+                0x0000000001008184                mfs_touch
+                0x000000000100818e                mfs_mkdir
+                0x0000000001008198                mfs_rm
+                0x00000000010081a2                mfs_rmdir
+                0x00000000010081ac                mfs_rename
+                0x00000000010081b6                mfs_opendir
+                0x00000000010081c0                mfs_closedir
+                0x00000000010081ca                mfs_openinode
+                0x00000000010081d4                mfs_closeinode
+                0x00000000010081de                mfs_readitem
+                0x00000000010081e8                mfs_readattrib
+                0x00000000010081f2                mfsr_device
+                0x000000000100825d                mfsr_device_ex
+                0x0000000001008352                mfsw_device
+                0x00000000010083bd                mfsw_device_ex
+                0x00000000010084e1                mfsr_superblk
+                0x0000000001008513                mfsw_superblk
+                0x0000000001008545                mfs_alloc_cluster
+                0x000000000100854f                mfs_free_cluster
+                0x0000000001008554                mfs_do_mkinode
+                0x0000000001008826                mfs_do_rminode
+                0x0000000001008830                mfs_do_mkdir
+                0x000000000100883a                mfs_do_rmdir
+                0x0000000001008844                mfs_do_checkitem
+                0x0000000001008b16                mfs_do_updateitem
+                0x0000000001008b20                mfs_do_openinode
+                0x0000000001008b2a                mfs_do_opendir
+                0x0000000001008b34                mfs_do_closeinode
+                0x0000000001008b3e                mfs_do_closedir
+ .text          0x0000000001008b48      0x8dc .obj/libdcrt.a(dstring.o)
+                0x0000000001008b48                memcpy
+                0x0000000001008b86                memmove
+                0x0000000001008c11                memset
+                0x0000000001008c4a                strcat
+                0x0000000001008c97                strcmp
+                0x0000000001008ce2                strcpy
+                0x0000000001008d1b                strlen
+                0x0000000001008d49                strncmp
+                0x0000000001008da3                strncpy
+                0x0000000001008deb                strnlen
+                0x0000000001008e24                strstr
+                0x0000000001008eb5                tolower
+                0x0000000001008f09                tonlower
+                0x0000000001008f6c                tonupper
+                0x0000000001008fcf                toupper
+                0x0000000001009023                wstrcat
+                0x0000000001009073                wstrcmp
+                0x00000000010090bf                wstrcpy
+                0x00000000010090fa                wstrlen
+                0x0000000001009129                wstrncmp
+                0x0000000001009184                wstrncpy
+                0x00000000010091ce                wstrnlen
+                0x0000000001009208                wstrstr
+                0x000000000100929e                wtolower
+                0x00000000010092f8                wtonlower
+                0x0000000001009361                wtonupper
+                0x00000000010093ca                wtoupper
+ .text          0x0000000001009424      0x9a9 .obj/libdcrt.a(dstdlib.o)
+                0x0000000001009424                atoi
+                0x00000000010095c3                itoa
+                0x00000000010096f5                itox
+                0x00000000010097a4                itob
+                0x00000000010097ee                atoll
+                0x0000000001009a66                lltoa
+                0x0000000001009a7f                lltox
+                0x0000000001009a98                var_arg
+                0x0000000001009ae9                vsprintf
+                0x0000000001009c85                sprintf
+                0x0000000001009cc3                detach_node
+ *fill*         0x0000000001009dcd        0x3 90909090
+ .text          0x0000000001009dd0      0x151 .obj/libdcrt.a(dbits.o)
+                0x0000000001009dd0                bitset
+                0x0000000001009e05                bitclean
+                0x0000000001009e36                bitsset
+                0x0000000001009e3b                bitsclean
+                0x0000000001009e49                bitread
+                0x0000000001009e73                bitrevers
+                0x0000000001009ea8                test0andset
+                0x0000000001009ee4                test1andset
  *(.gnu.warning)
 
 .fini
  *(.fini)
-                0x000000000100973d                PROVIDE (__etext, .)
-                0x000000000100973d                PROVIDE (_etext, .)
-                0x000000000100973d                PROVIDE (etext, .)
+                0x0000000001009f21                PROVIDE (__etext, .)
+                0x0000000001009f21                PROVIDE (_etext, .)
+                0x0000000001009f21                PROVIDE (etext, .)
 
-.rodata         0x0000000001009740      0x40b
+.rodata         0x0000000001009f24      0x40b
  *(.rodata .rodata.* .gnu.linkonce.r.*)
- .rodata        0x0000000001009740       0x55 kernel/kmain.o
- *fill*         0x0000000001009795        0x3 00
- .rodata        0x0000000001009798       0xa1 kernel/int.o
- .rodata        0x0000000001009839        0xd kernel/kmodel.o
- .rodata        0x0000000001009846        0xa kernel/printk.o
- .rodata        0x0000000001009850        0x6 kernel/schedu.o
- .rodata        0x0000000001009856       0x19 kernel/signal.o
- .rodata        0x000000000100986f        0xd mm/page.o
- .rodata        0x000000000100987c      0x242 drivers/ide.o
- .rodata        0x0000000001009abe       0x18 drivers/keyboard.o
- .rodata        0x0000000001009ad6        0xc drivers/console.o
- *fill*         0x0000000001009ae2        0x2 00
- .rodata        0x0000000001009ae4       0x3d drivers/vga.o
- .rodata        0x0000000001009b21       0x1e fs/mfs/mfs.o
- .rodata        0x0000000001009b3f        0xc .obj/libdcrt.a(dstdlib.o)
+ .rodata        0x0000000001009f24       0x55 kernel/kmain.o
+ *fill*         0x0000000001009f79        0x3 00
+ .rodata        0x0000000001009f7c       0xa1 kernel/int.o
+ .rodata        0x000000000100a01d        0xd kernel/kmodel.o
+ .rodata        0x000000000100a02a        0xa kernel/printk.o
+ .rodata        0x000000000100a034        0x6 kernel/schedu.o
+ .rodata        0x000000000100a03a       0x19 kernel/signal.o
+ .rodata        0x000000000100a053        0xd mm/page.o
+ .rodata        0x000000000100a060      0x242 drivers/ide.o
+ .rodata        0x000000000100a2a2       0x18 drivers/keyboard.o
+ .rodata        0x000000000100a2ba        0xc drivers/console.o
+ *fill*         0x000000000100a2c6        0x2 00
+ .rodata        0x000000000100a2c8       0x3d drivers/vga.o
+ .rodata        0x000000000100a305       0x1e fs/mfs/mfs.o
+ .rodata        0x000000000100a323        0xc .obj/libdcrt.a(dstdlib.o)
 
 .rodata1
  *(.rodata1)
@@ -583,48 +596,48 @@ Address of section .text set to 0x1001000
 .eh_frame_hdr
  *(.eh_frame_hdr)
 
-.eh_frame       0x0000000001009b4c     0x231c
+.eh_frame       0x000000000100a330     0x2500
  *(.eh_frame)
- .eh_frame      0x0000000001009b4c       0x94 kernel/kmain.o
- .eh_frame      0x0000000001009be0      0x4d4 kernel/int.o
+ .eh_frame      0x000000000100a330       0x94 kernel/kmain.o
+ .eh_frame      0x000000000100a3c4      0x4d4 kernel/int.o
                                         0x4ec (size before relaxing)
- .eh_frame      0x000000000100a0b4      0x4c0 kernel/kmodel.o
+ .eh_frame      0x000000000100a898      0x4c0 kernel/kmodel.o
                                         0x4d8 (size before relaxing)
- .eh_frame      0x000000000100a574       0x88 kernel/printk.o
+ .eh_frame      0x000000000100ad58       0x88 kernel/printk.o
                                          0xa0 (size before relaxing)
- .eh_frame      0x000000000100a5fc       0xa0 kernel/schedu.o
+ .eh_frame      0x000000000100ade0       0xa0 kernel/schedu.o
                                          0xb8 (size before relaxing)
- .eh_frame      0x000000000100a69c       0x70 kernel/8259a.o
+ .eh_frame      0x000000000100ae80       0x70 kernel/8259a.o
                                          0x88 (size before relaxing)
- .eh_frame      0x000000000100a70c       0xc0 kernel/signal.o
+ .eh_frame      0x000000000100aef0       0xc0 kernel/signal.o
                                          0xd8 (size before relaxing)
- .eh_frame      0x000000000100a7cc       0x20 kernel/time.o
-                                         0x38 (size before relaxing)
- .eh_frame      0x000000000100a7ec      0x160 kernel/cache.o
+ .eh_frame      0x000000000100afb0       0x68 kernel/time.o
+                                         0x80 (size before relaxing)
+ .eh_frame      0x000000000100b018      0x160 kernel/cache.o
                                         0x178 (size before relaxing)
- .eh_frame      0x000000000100a94c       0x40 kernel/exec.o
+ .eh_frame      0x000000000100b178       0x40 kernel/exec.o
                                          0x58 (size before relaxing)
- .eh_frame      0x000000000100a98c       0x40 mm/kmalloc.o
+ .eh_frame      0x000000000100b1b8       0x40 mm/kmalloc.o
                                          0x58 (size before relaxing)
- .eh_frame      0x000000000100a9cc       0xb4 mm/mm.o
+ .eh_frame      0x000000000100b1f8       0xb4 mm/mm.o
                                          0xcc (size before relaxing)
- .eh_frame      0x000000000100aa80      0x2c0 mm/page.o
+ .eh_frame      0x000000000100b2ac      0x2c0 mm/page.o
                                         0x2d8 (size before relaxing)
- .eh_frame      0x000000000100ad40      0x224 drivers/ide.o
+ .eh_frame      0x000000000100b56c      0x224 drivers/ide.o
                                         0x23c (size before relaxing)
- .eh_frame      0x000000000100af64      0x260 drivers/keyboard.o
+ .eh_frame      0x000000000100b790      0x260 drivers/keyboard.o
                                         0x278 (size before relaxing)
- .eh_frame      0x000000000100b1c4      0x100 drivers/console.o
+ .eh_frame      0x000000000100b9f0      0x100 drivers/console.o
                                         0x118 (size before relaxing)
- .eh_frame      0x000000000100b2c4      0x200 drivers/vga.o
+ .eh_frame      0x000000000100baf0      0x200 drivers/vga.o
                                         0x218 (size before relaxing)
- .eh_frame      0x000000000100b4c4      0x3b0 fs/mfs/mfs.o
-                                        0x3c8 (size before relaxing)
- .eh_frame      0x000000000100b874      0x360 .obj/libdcrt.a(dstring.o)
+ .eh_frame      0x000000000100bcf0      0x54c fs/mfs/mfs.o
+                                        0x564 (size before relaxing)
+ .eh_frame      0x000000000100c23c      0x360 .obj/libdcrt.a(dstring.o)
                                         0x378 (size before relaxing)
- .eh_frame      0x000000000100bbd4      0x170 .obj/libdcrt.a(dstdlib.o)
+ .eh_frame      0x000000000100c59c      0x170 .obj/libdcrt.a(dstdlib.o)
                                         0x188 (size before relaxing)
- .eh_frame      0x000000000100bd44      0x124 .obj/libdcrt.a(dbits.o)
+ .eh_frame      0x000000000100c70c      0x124 .obj/libdcrt.a(dbits.o)
                                         0x13c (size before relaxing)
 
 .gcc_except_table
@@ -632,8 +645,8 @@ Address of section .text set to 0x1001000
 
 .exception_ranges
  *(.exception_ranges .exception_ranges*)
-                0x000000000100be68                . = (ALIGN (0x1000) - ((0x1000 - .) & 0xfff))
-                0x000000000100c000                . = DATA_SEGMENT_ALIGN (0x1000, 0x1000)
+                0x000000000100c830                . = (ALIGN (0x1000) - ((0x1000 - .) & 0xfff))
+                0x000000000100d000                . = DATA_SEGMENT_ALIGN (0x1000, 0x1000)
 
 .eh_frame
  *(.eh_frame)
@@ -651,24 +664,24 @@ Address of section .text set to 0x1001000
  *(.tbss .tbss.* .gnu.linkonce.tb.*)
  *(.tcommon)
 
-.preinit_array  0x000000000100c000        0x0
-                0x000000000100c000                PROVIDE (__preinit_array_start, .)
+.preinit_array  0x000000000100d000        0x0
+                0x000000000100d000                PROVIDE (__preinit_array_start, .)
  *(.preinit_array)
-                0x000000000100c000                PROVIDE (__preinit_array_end, .)
+                0x000000000100d000                PROVIDE (__preinit_array_end, .)
 
-.init_array     0x000000000100c000        0x0
-                0x000000000100c000                PROVIDE (__init_array_start, .)
+.init_array     0x000000000100d000        0x0
+                0x000000000100d000                PROVIDE (__init_array_start, .)
  *(SORT(.init_array.*) SORT(.ctors.*))
  *(.init_array)
  *(EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .ctors)
-                0x000000000100c000                PROVIDE (__init_array_end, .)
+                0x000000000100d000                PROVIDE (__init_array_end, .)
 
-.fini_array     0x000000000100c000        0x0
-                0x000000000100c000                PROVIDE (__fini_array_start, .)
+.fini_array     0x000000000100d000        0x0
+                0x000000000100d000                PROVIDE (__fini_array_start, .)
  *(SORT(.fini_array.*) SORT(.dtors.*))
  *(.fini_array)
  *(EXCLUDE_FILE(*crtend?.o *crtend.o *crtbegin?.o *crtbegin.o) .dtors)
-                0x000000000100c000                PROVIDE (__fini_array_end, .)
+                0x000000000100d000                PROVIDE (__fini_array_end, .)
 
 .ctors
  *crtbegin.o(.ctors)
@@ -697,161 +710,161 @@ Address of section .text set to 0x1001000
 .got
  *(.got)
  *(.igot)
-                0x000000000100c000                . = DATA_SEGMENT_RELRO_END (., 0xc)
+                0x000000000100d000                . = DATA_SEGMENT_RELRO_END (., 0xc)
 
-.got.plt        0x000000000100c000        0x0
+.got.plt        0x000000000100d000        0x0
  *(.got.plt)
  *(.igot.plt)
  .igot.plt      0x0000000000000000        0x0 kernel/_start.o
 
-.data           0x000000000100c000      0x84c
+.data           0x000000000100d000      0x84c
  *(.data .data.* .gnu.linkonce.d.*)
- .data          0x000000000100c000        0xc kernel/kmain.o
-                0x000000000100c000                gdt_ptr
-                0x000000000100c008                fool_version
- .data          0x000000000100c00c        0x6 kernel/int.o
-                0x000000000100c00c                idt_ptr
- *fill*         0x000000000100c012        0x2 00
- .data          0x000000000100c014        0x0 kernel/kmodel.o
- .data          0x000000000100c014        0x4 kernel/printk.o
-                0x000000000100c014                pvga
- .data          0x000000000100c018        0x0 kernel/schedu.o
- .data          0x000000000100c018        0x0 kernel/8259a.o
- .data          0x000000000100c018        0x0 kernel/signal.o
- .data          0x000000000100c018        0x0 kernel/time.o
- .data          0x000000000100c018        0x0 kernel/cache.o
- .data          0x000000000100c018        0x0 kernel/exec.o
- .data          0x000000000100c018        0x4 mm/kmalloc.o
-                0x000000000100c018                pool
- .data          0x000000000100c01c        0x0 mm/mm.o
- .data          0x000000000100c01c        0x8 mm/page.o
- *fill*         0x000000000100c024       0x1c 00
- .data          0x000000000100c040       0xe0 drivers/ide.o
-                0x000000000100c040                ide_primary_r
-                0x000000000100c058                ide_primary_w
-                0x000000000100c070                ide_secondy_r
-                0x000000000100c088                ide_secondy_w
-                0x000000000100c0a0                ide_packet_name
- .data          0x000000000100c120      0x600 drivers/keymap_US.o
-                0x000000000100c120                keymap
- .data          0x000000000100c720       0x34 drivers/keyboard.o
-                0x000000000100c720                keyboardname
-                0x000000000100c724                keyboard_fop
-                0x000000000100c740                keyboard_dev
-                0x000000000100c748                keyboard_drv
- .data          0x000000000100c754       0x60 drivers/console.o
-                0x000000000100c754                console_fp
-                0x000000000100c770                dev_tty1
-                0x000000000100c778                dev_tty2
-                0x000000000100c780                dev_tty3
-                0x000000000100c788                dev_tty4
-                0x000000000100c790                dev_stdin
-                0x000000000100c798                dev_stdout
-                0x000000000100c7a0                dev_stderr
-                0x000000000100c7a8                console_drv
- .data          0x000000000100c7b4       0x2c drivers/vga.o
-                0x000000000100c7b4                vga_fop
-                0x000000000100c7d0                vga_pivat
- .data          0x000000000100c7e0       0x6c fs/mfs/mfs.o
-                0x000000000100c7e0                mfs_fop
-                0x000000000100c800                mfs_dop
-                0x000000000100c830                mfs_struct
- .data          0x000000000100c84c        0x0 .obj/libdcrt.a(dstring.o)
- .data          0x000000000100c84c        0x0 .obj/libdcrt.a(dstdlib.o)
- .data          0x000000000100c84c        0x0 .obj/libdcrt.a(dbits.o)
+ .data          0x000000000100d000        0xc kernel/kmain.o
+                0x000000000100d000                gdt_ptr
+                0x000000000100d008                fool_version
+ .data          0x000000000100d00c        0x6 kernel/int.o
+                0x000000000100d00c                idt_ptr
+ *fill*         0x000000000100d012        0x2 00
+ .data          0x000000000100d014        0x0 kernel/kmodel.o
+ .data          0x000000000100d014        0x4 kernel/printk.o
+                0x000000000100d014                pvga
+ .data          0x000000000100d018        0x0 kernel/schedu.o
+ .data          0x000000000100d018        0x0 kernel/8259a.o
+ .data          0x000000000100d018        0x0 kernel/signal.o
+ .data          0x000000000100d018        0x0 kernel/time.o
+ .data          0x000000000100d018        0x0 kernel/cache.o
+ .data          0x000000000100d018        0x0 kernel/exec.o
+ .data          0x000000000100d018        0x4 mm/kmalloc.o
+                0x000000000100d018                pool
+ .data          0x000000000100d01c        0x0 mm/mm.o
+ .data          0x000000000100d01c        0x8 mm/page.o
+ *fill*         0x000000000100d024       0x1c 00
+ .data          0x000000000100d040       0xe0 drivers/ide.o
+                0x000000000100d040                ide_primary_r
+                0x000000000100d058                ide_primary_w
+                0x000000000100d070                ide_secondy_r
+                0x000000000100d088                ide_secondy_w
+                0x000000000100d0a0                ide_packet_name
+ .data          0x000000000100d120      0x600 drivers/keymap_US.o
+                0x000000000100d120                keymap
+ .data          0x000000000100d720       0x34 drivers/keyboard.o
+                0x000000000100d720                keyboardname
+                0x000000000100d724                keyboard_fop
+                0x000000000100d740                keyboard_dev
+                0x000000000100d748                keyboard_drv
+ .data          0x000000000100d754       0x60 drivers/console.o
+                0x000000000100d754                console_fp
+                0x000000000100d770                dev_tty1
+                0x000000000100d778                dev_tty2
+                0x000000000100d780                dev_tty3
+                0x000000000100d788                dev_tty4
+                0x000000000100d790                dev_stdin
+                0x000000000100d798                dev_stdout
+                0x000000000100d7a0                dev_stderr
+                0x000000000100d7a8                console_drv
+ .data          0x000000000100d7b4       0x2c drivers/vga.o
+                0x000000000100d7b4                vga_fop
+                0x000000000100d7d0                vga_pivat
+ .data          0x000000000100d7e0       0x6c fs/mfs/mfs.o
+                0x000000000100d7e0                mfs_fop
+                0x000000000100d800                mfs_dop
+                0x000000000100d830                mfs_struct
+ .data          0x000000000100d84c        0x0 .obj/libdcrt.a(dstring.o)
+ .data          0x000000000100d84c        0x0 .obj/libdcrt.a(dstdlib.o)
+ .data          0x000000000100d84c        0x0 .obj/libdcrt.a(dbits.o)
 
 .data1
  *(.data1)
-                0x000000000100c84c                _edata = .
-                0x000000000100c84c                PROVIDE (edata, .)
-                0x000000000100c84c                __bss_start = .
+                0x000000000100d84c                _edata = .
+                0x000000000100d84c                PROVIDE (edata, .)
+                0x000000000100d84c                __bss_start = .
 
-.bss            0x000000000100c860     0xd154
+.bss            0x000000000100d860     0xd154
  *(.dynbss)
  *(.bss .bss.* .gnu.linkonce.b.*)
- .bss           0x000000000100c860     0x6000 kernel/_start.o
-                0x000000000100c860                _kstack
-                0x000000000100e860                kstacktop
-                0x000000000100e860                _kintstack
-                0x0000000001010860                _kexpstack
-                0x0000000001010860                kintstacktop
-                0x0000000001012860                kexpstacktop
- .bss           0x0000000001012860       0xac kernel/kmain.o
-                0x0000000001012860                gdt
-                0x00000000010128a0                tss
- *fill*         0x000000000101290c       0x14 00
- .bss           0x0000000001012920     0x1058 kernel/int.o
-                0x0000000001012920                irqtable
-                0x0000000001013118                clicnt
-                0x000000000101311c                system_entry
-                0x000000000101312c                ps_entry
-                0x0000000001013140                file_entry
-                0x000000000101316c                mm_entry
- *fill*         0x0000000001013978        0x8 00
- .bss           0x0000000001013980     0x2408 kernel/kmodel.o
-                0x0000000001013980                devroot
-                0x0000000001014750                module_head
-                0x0000000001014754                lck_module_head
-                0x0000000001014758                moudule_cnt
-                0x0000000001014760                fs_table
-                0x0000000001014b60                device_head
-                0x0000000001015c60                lck_device
-                0x0000000001015c80                driver_head
-                0x0000000001015d80                irhead
-                0x0000000001015d84                irlck
- *fill*         0x0000000001015d88       0x18 00
- .bss           0x0000000001015da0      0x408 kernel/printk.o
-                0x0000000001015da0                kbuf
-                0x00000000010161a0                kx
-                0x00000000010161a1                ky
-                0x00000000010161a4                klock
- *fill*         0x00000000010161a8       0x18 00
- .bss           0x00000000010161c0     0x15e0 kernel/schedu.o
-                0x00000000010161c0                tsk_running
-                0x00000000010161c4                thr_running
-                0x00000000010161e0                Core
-                0x0000000001016740                Pcore
- .bss           0x00000000010177a0        0x0 kernel/8259a.o
- .bss           0x00000000010177a0        0x0 kernel/signal.o
- .bss           0x00000000010177a0        0x0 kernel/time.o
- .bss           0x00000000010177a0       0xa8 kernel/cache.o
-                0x00000000010177a0                cdir
-                0x00000000010177e0                cinode
-                0x0000000001017820                cfile
- .bss           0x0000000001017848        0x0 kernel/exec.o
- .bss           0x0000000001017848        0x0 mm/kmalloc.o
- .bss           0x0000000001017848        0x0 mm/mm.o
- .bss           0x0000000001017848        0x4 mm/page.o
- *fill*         0x000000000101784c       0x14 00
- .bss           0x0000000001017860      0xb54 drivers/ide.o
-                0x0000000001017860                ide0_rwbuffer
-                0x0000000001017a60                ide0_buf_rwlck
-                0x0000000001017a80                ide1_rwbuffer
-                0x0000000001017c80                ide1_buf_rwlck
-                0x0000000001017ca0                ide_dev
- .bss           0x00000000010183b4        0x0 drivers/keymap_US.o
- .bss           0x00000000010183b4        0x0 drivers/keyboard.o
- .bss           0x00000000010183b4        0x0 drivers/console.o
- .bss           0x00000000010183b4       0x14 drivers/vga.o
-                0x00000000010183b4                vga_dev
-                0x00000000010183bc                vga_drv
- .bss           0x00000000010183c8        0x0 fs/mfs/mfs.o
- .bss           0x00000000010183c8        0x0 .obj/libdcrt.a(dstring.o)
- .bss           0x00000000010183c8        0x0 .obj/libdcrt.a(dstdlib.o)
- .bss           0x00000000010183c8        0x0 .obj/libdcrt.a(dbits.o)
+ .bss           0x000000000100d860     0x6000 kernel/_start.o
+                0x000000000100d860                _kstack
+                0x000000000100f860                kstacktop
+                0x000000000100f860                _kintstack
+                0x0000000001011860                _kexpstack
+                0x0000000001011860                kintstacktop
+                0x0000000001013860                kexpstacktop
+ .bss           0x0000000001013860       0xac kernel/kmain.o
+                0x0000000001013860                gdt
+                0x00000000010138a0                tss
+ *fill*         0x000000000101390c       0x14 00
+ .bss           0x0000000001013920     0x1058 kernel/int.o
+                0x0000000001013920                irqtable
+                0x0000000001014118                clicnt
+                0x000000000101411c                system_entry
+                0x000000000101412c                ps_entry
+                0x0000000001014140                file_entry
+                0x000000000101416c                mm_entry
+ *fill*         0x0000000001014978        0x8 00
+ .bss           0x0000000001014980     0x2408 kernel/kmodel.o
+                0x0000000001014980                devroot
+                0x0000000001015750                module_head
+                0x0000000001015754                lck_module_head
+                0x0000000001015758                moudule_cnt
+                0x0000000001015760                fs_table
+                0x0000000001015b60                device_head
+                0x0000000001016c60                lck_device
+                0x0000000001016c80                driver_head
+                0x0000000001016d80                irhead
+                0x0000000001016d84                irlck
+ *fill*         0x0000000001016d88       0x18 00
+ .bss           0x0000000001016da0      0x408 kernel/printk.o
+                0x0000000001016da0                kbuf
+                0x00000000010171a0                kx
+                0x00000000010171a1                ky
+                0x00000000010171a4                klock
+ *fill*         0x00000000010171a8       0x18 00
+ .bss           0x00000000010171c0     0x15e0 kernel/schedu.o
+                0x00000000010171c0                tsk_running
+                0x00000000010171c4                thr_running
+                0x00000000010171e0                Core
+                0x0000000001017740                Pcore
+ .bss           0x00000000010187a0        0x0 kernel/8259a.o
+ .bss           0x00000000010187a0        0x0 kernel/signal.o
+ .bss           0x00000000010187a0        0x0 kernel/time.o
+ .bss           0x00000000010187a0       0xa8 kernel/cache.o
+                0x00000000010187a0                cdir
+                0x00000000010187e0                cinode
+                0x0000000001018820                cfile
+ .bss           0x0000000001018848        0x0 kernel/exec.o
+ .bss           0x0000000001018848        0x0 mm/kmalloc.o
+ .bss           0x0000000001018848        0x0 mm/mm.o
+ .bss           0x0000000001018848        0x4 mm/page.o
+ *fill*         0x000000000101884c       0x14 00
+ .bss           0x0000000001018860      0xb54 drivers/ide.o
+                0x0000000001018860                ide0_rwbuffer
+                0x0000000001018a60                ide0_buf_rwlck
+                0x0000000001018a80                ide1_rwbuffer
+                0x0000000001018c80                ide1_buf_rwlck
+                0x0000000001018ca0                ide_dev
+ .bss           0x00000000010193b4        0x0 drivers/keymap_US.o
+ .bss           0x00000000010193b4        0x0 drivers/keyboard.o
+ .bss           0x00000000010193b4        0x0 drivers/console.o
+ .bss           0x00000000010193b4       0x14 drivers/vga.o
+                0x00000000010193b4                vga_dev
+                0x00000000010193bc                vga_drv
+ .bss           0x00000000010193c8        0x0 fs/mfs/mfs.o
+ .bss           0x00000000010193c8        0x0 .obj/libdcrt.a(dstring.o)
+ .bss           0x00000000010193c8        0x0 .obj/libdcrt.a(dstdlib.o)
+ .bss           0x00000000010193c8        0x0 .obj/libdcrt.a(dbits.o)
  *(COMMON)
- *fill*         0x00000000010183c8       0x18 00
- COMMON         0x00000000010183e0     0x15c0 kernel/schedu.o
-                0x00000000010183e0                Init
-                0x0000000001018940                Pinit
- COMMON         0x00000000010199a0       0x14 drivers/keyboard.o
-                0x00000000010199a0                keystatus
-                0x00000000010199b4                . = ALIGN ((. != 0x0)?0x4:0x1)
-                0x00000000010199b4                . = ALIGN (0x4)
-                0x00000000010199b4                . = ALIGN (0x4)
-                0x00000000010199b4                _end = .
-                0x00000000010199b4                PROVIDE (end, .)
-                0x00000000010199b4                . = DATA_SEGMENT_END (.)
+ *fill*         0x00000000010193c8       0x18 00
+ COMMON         0x00000000010193e0     0x15c0 kernel/schedu.o
+                0x00000000010193e0                Init
+                0x0000000001019940                Pinit
+ COMMON         0x000000000101a9a0       0x14 drivers/keyboard.o
+                0x000000000101a9a0                keystatus
+                0x000000000101a9b4                . = ALIGN ((. != 0x0)?0x4:0x1)
+                0x000000000101a9b4                . = ALIGN (0x4)
+                0x000000000101a9b4                . = ALIGN (0x4)
+                0x000000000101a9b4                _end = .
+                0x000000000101a9b4                PROVIDE (end, .)
+                0x000000000101a9b4                . = DATA_SEGMENT_END (.)
 
 .stab
  *(.stab)

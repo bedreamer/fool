@@ -308,40 +308,8 @@ int mfs_do_mkinode(struct itemdata *pdir,struct itemattrib *pitm,_ci const char 
 	struct mfs_core *pc = (struct mfs_core *)(pdir->i_private);
 	if (NULL==pc) return INVALID;
 	if (pc->m_cluster > pc->m_super->clst_cnt) return INVALID;
-
-	struct mfs_inode inode_buf[MFS_INODES_PER_SCT]={{{0}}};
-	int i,j,m;
-
-	for (i=0;i<MFS_FAT_CNT;i++)
-	{
-		if (MFS_INVALID_CLUSTER!=pc->i_fat[i])
-		{
-			for (j=0;j<MFS_SCTS_PERCLUSTER;i++)
-			{
-				int result=dev_op->kread(&(pdir->i_root->mnt_dev->i_data),
-					(char*)inode_buf,
-					pc->i_fat[i]*MFS_SCTS_PERCLUSTER+j,
-					1);
-				if (INVALID==result) goto end;
-				for (m=0;m<MFS_INODES_PER_SCT;m++)
-				{
-					if (((inode_buf[m].m_attrib&ITYPE_ARCHIVE)||
-					    (inode_buf[m].m_attrib&ITYPE_DIR)||
-					    (inode_buf[m].m_attrib&ITYPE_DEVICE))
-					{
-						if (0==strncmp(nodename,
-							(char*)inode_buf[m].m_name,K_MAX_LEN_NODE_NAME))
-							return INVALID;
-					}
-					else
-					{
-					}
-				}
-			}
-		}
-		else goto end;
-	}
-end:
+	int result = mfs_do_checkitem(pdir,pitm,nodename);
+	if (VALID==result) return INVALID;
 	return INVALID;
 }
 
@@ -424,7 +392,7 @@ int mfs_do_checkitem_insct(struct itemdata *pdir,_co struct itemattrib *pitm,siz
 	{
 		if (inode_buf[i].m_attrib&ITYPE_ALIVE)
 		{
-			if (0==strncmp(inode_buf[i].m_name,nodename,K_MAX_LEN_NODE_NAME))
+			if (0==strncmp((char*)inode_buf[i].m_name,nodename,K_MAX_LEN_NODE_NAME))
 			{
 				if (NULL!=pitm)
 				{

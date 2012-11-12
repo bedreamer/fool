@@ -35,8 +35,8 @@
 
 typedef volatile unsigned int pid_t;
 typedef unsigned int dev_t;
-typedef unsigned short time_t;
-typedef unsigned short date_t;
+typedef unsigned int time_t;
+typedef unsigned int date_t;
 typedef unsigned int clust_t;
 typedef int foff_t;
 #define KERNEL_CR3		0x100	// 1M
