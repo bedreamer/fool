@@ -75,7 +75,7 @@
  * @ d_create: 节点创建日期
  * @ t_lastaccess: 节点最后访问时间
  * @ d_lastaccess: 节点最后访问日期
- * @ i_size: 节点大小
+ * @ i_size: 节点大小,块设备表示具有的LBA个数
  * @ i_type: 该节点代表的文件类型
  * @ i_devnum: 若该节点为设备则表示设备号
  */
@@ -87,12 +87,12 @@ struct itemattrib
 	time_t t_lastaccess;
 	date_t d_lastaccess;
 	size_t i_size;
-	unsigned short i_type;
-#define ITYPE_ARCHIVE	0x0001
-#define ITYPE_DIR		0x0002
-#define ITYPE_DEVICE	0x0010
-#define ITYPE_CHAR_DEV	(ITYPE_DEVICE|0x0004)
-#define ITYPE_BLK_DEV	(ITYPE_DEVICE|0x0008)
+	unsigned int i_type;
+#define ITYPE_ARCHIVE	0x00000001
+#define ITYPE_DIR		0x00000002
+#define ITYPE_DEVICE	0x00000010
+#define ITYPE_CHAR_DEV	(ITYPE_DEVICE|0x00000004)
+#define ITYPE_BLK_DEV	(ITYPE_DEVICE|0x00000008)
 	dev_t i_devnum;
 };
 
@@ -114,6 +114,8 @@ struct itemattrib
 #define K_FS_CATORAY_CNT		256
 /*块设备卷标长度*/
 #define K_LABLE_MAX_LEN			16
+/*块设备读写大小*/
+#define SECTOR_SIZE				512
 
 #include <kernel/kernel.h>
 #include <kernel/schedu.h>
@@ -147,6 +149,7 @@ struct owner_struct
  * @ i_volnum: 若为文件则表示节点所在卷号
  * @ d_parent: 父目录节点指针
  * @ i_root: 节点所在卷
+ * @ d_op: 目录操作接口
  * @ f_op: 作为字符设备或普通文件的接口
  */
 struct itemdata
@@ -157,6 +160,7 @@ struct itemdata
 	unsigned char i_volnum; /* 0 ~ 25 */
 	struct dir *d_parent;
 	struct mntpnt_struct *i_root;
+	struct dir_op *d_op;
 	struct file_op *f_op;
 };
 
@@ -199,7 +203,6 @@ struct inode
  * @ i_child: 子文件头指针
  * @ lck_i_child: 子文件链表操作锁
  * @ d_brother: 目录链表节点.
- * @ d_op: 目录操作接口
  * @ d_data: 文件节点通用信息.
  */
 struct dir
@@ -211,8 +214,6 @@ struct dir
 	struct inode *i_child;
 
 	struct list_head d_brother;
-
-	struct dir_op *d_op;
 	struct itemdata d_data;
 };
 
@@ -244,10 +245,11 @@ struct fs_struct
 	struct file_op *f_op;
 	struct dir_op *d_op;
 
-	int (*mkfs)(struct inode *);
+	int (*mkfs)(struct inode *,const char *);
 	int (*mount)(struct inode *,void **);
 	int (*umount)(struct inode *,void **);
 };
+extern int register_fs(struct fs_struct *);
 
 /* 块设备挂载点结构
  * @ mnt_num: 挂载目标设备的号码, 0 ~ 31
@@ -293,8 +295,9 @@ struct file_op
 	int (*write)(struct file *,_ui const char *,foff_t,_uo foff_t *,int);
 	int (*ioctl)(struct file *,int,int);
 
-	int (*kread)(struct inode *,_co char *,foff_t,_co foff_t *,int cnt);
-	int (*kwrite)(struct inode *,_ci const char *,foff_t,_co foff_t *,int);
+	/*内核方法按照块大小进行传递(512 bytes)*/
+	int (*kread)(struct itemdata *,_co char *,foff_t,int);
+	int (*kwrite)(struct itemdata *,_ci const char *,foff_t,int);
 };
 
 /*目录操作接口，块设备有效
@@ -322,7 +325,7 @@ struct dir_op
 	int (*rm   )(struct dir *,_ci const char *);
 	int (*rmdir)(struct dir *,_ci const char *);
 
-	int (*rename)(struct dir *,struct itemattrib,_ci const char *);
+	int (*rename)(struct dir *,struct itemattrib *,_ci const char *);
 
 	int (*opendir)(struct dir *,_co struct itemdata *,_ci const char *);
 	int (*closedir)(struct dir *,struct itemdata *);

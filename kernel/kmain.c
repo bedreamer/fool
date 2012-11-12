@@ -15,7 +15,6 @@
 #include <drivers/keyboard.h>
 #include <drivers/ide.h>
 #include <drivers/console.h>
-#include <fs/mfs.h>
 
 struct seg_descriptor gdt[GDT_SIZE]={{0}};	/* 全局描述符**/
 #pragma pack(1)

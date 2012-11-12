@@ -33,6 +33,16 @@ struct ioport_region *irhead=NULL;
 /*范围链表读写锁*/
 struct spin_lock irlck={._lck=SPIN_UNLOCKED};
 
+/*注册文件系统*/
+int register_fs(struct fs_struct *fs)
+{
+	if (NULL==fs) return INVALID;
+	if (K_FS_CATORAY_CNT<=fs->fs_id) return INVALID;
+	if (NULL!=fs_table[fs->fs_id]) return INVALID;
+	fs_table[fs->fs_id] = fs;
+	return VALID;
+}
+
 /*check if the region already registerd.*/
 int ioport_region_check(unsigned short start,unsigned short end)
 {
@@ -192,8 +202,8 @@ int dir_check_coreitem(struct dir *pdir,_co struct itemdata **ppitm,_ci const ch
 int dir_check_fsitem(struct dir *pdir,_co struct itemattrib *pitr,_ci const char *nodename)
 {
 	if (NULL==pdir || NULL==pitr||NULL==nodename) return INVALID;
-	if (NULL==pdir->d_op||NULL==pdir->d_op->readattrib) return INVALID;
-	return pdir->d_op->readattrib(pdir,pitr,nodename);
+	if (NULL==pdir->d_data.d_op||NULL==pdir->d_data.d_op->readattrib) return INVALID;
+	return pdir->d_data.d_op->readattrib(pdir,pitr,nodename);
 }
 
 /*检查文件系统中是否存在指定的文件夹节点*/
@@ -261,7 +271,7 @@ int dir_do_opendir(struct dir *pdir,_co struct dir **ppdir,_ci const char *noden
 	struct itemattrib ditm={{0}};
 	result = dir_check_fsdir(pdir,&ditm,nodename);
 	if (INVALID==result) return INVALID;
-	if (NULL==pdir->d_op||NULL==pdir->d_op->opendir) return INVALID;
+	if (NULL==pdir->d_data.d_op||NULL==pdir->d_data.d_op->opendir) return INVALID;
 
 	struct dir *p = dir_cache_alloc();
 	if (NULL==p) return INVALID;
@@ -270,14 +280,14 @@ int dir_do_opendir(struct dir *pdir,_co struct dir **ppdir,_ci const char *noden
 	spinlock_init(p->lck_i_child);
 	list_ini(p->d_brother);
 	p->d_child = NULL,p->i_child = NULL;
-	p->d_op = pdir -> d_op;
+	p->d_data.d_op = pdir -> d_data.d_op;
 
 	p->d_data.i_rcnt = 0;
 	p->d_data.i_volnum = pdir->d_data.i_volnum;
 	p->d_data.d_parent=pdir;
 	p->d_data.i_root=pdir->d_data.i_root;
 
-	result = pdir->d_op->opendir(pdir,&(p->d_data),nodename);
+	result = pdir->d_data.d_op->opendir(pdir,&(p->d_data),nodename);
 	if (INVALID==result) goto faile;
 	*ppdir = p;
 	return VALID;
@@ -298,7 +308,7 @@ int dir_do_openinode(struct dir *pdir,_co struct inode **ppi,_ci const char *nod
 	struct itemattrib ditm={{0}};
 	result = dir_check_fsinode(pdir,&ditm,nodename);
 	if (INVALID==result) return INVALID;
-	if (NULL==pdir->d_op||NULL==pdir->d_op->openinode) return INVALID;
+	if (NULL==pdir->d_data.d_op||NULL==pdir->d_data.d_op->openinode) return INVALID;
 
 	struct inode *p = inode_cache_alloc();
 	if (NULL==p) return INVALID;
@@ -311,7 +321,7 @@ int dir_do_openinode(struct dir *pdir,_co struct inode **ppi,_ci const char *nod
 	p->f_lst = NULL;
 	spinlock_init(p->lck_f_lst);
 
-	result = pdir->d_op->openinode(pdir,p,nodename);
+	result = pdir->d_data.d_op->openinode(pdir,p,nodename);
 	if (INVALID==result) goto faile;
 	*ppi = p;
 	return VALID;
@@ -325,11 +335,11 @@ faile:
 int dir_do_opennewinode(struct dir *pdir,_co struct inode **ppi,_ci const char *nodename)
 {
 	if (NULL==pdir||NULL==ppi||NULL==nodename) return INVALID;
-	if (NULL==pdir->d_op||NULL==pdir->d_op->touch) return INVALID;
-	if (NULL==pdir->d_op||NULL==pdir->d_op->openinode) return INVALID;
+	if (NULL==pdir->d_data.d_op||NULL==pdir->d_data.d_op->touch) return INVALID;
+	if (NULL==pdir->d_data.d_op||NULL==pdir->d_data.d_op->openinode) return INVALID;
 
 	struct itemattrib itm={{0}};
-	int result = pdir->d_op->touch(pdir,&itm,nodename);
+	int result = pdir->d_data.d_op->touch(pdir,&itm,nodename);
 	if (INVALID==result) return INVALID;
 	return dir_do_openinode(pdir,ppi,nodename);
 }
@@ -412,8 +422,8 @@ int dir_close_dir(struct dir *pdir,_ci struct dir *ppdir)
 		pdir->d_data.i_rcnt --;
 	}
 	result = VALID;
-	if (NULL!=pdir->d_op&&NULL!=pdir->d_op->closedir)
-		result = pdir->d_op->closedir(pdir,&(ppdir->d_data));
+	if (NULL!=pdir->d_data.d_op&&NULL!=pdir->d_data.d_op->closedir)
+		result = pdir->d_data.d_op->closedir(pdir,&(ppdir->d_data));
 	dir_cache_free(ppdir);
 
 	/*在这里直接释放空间，如果有野指针指向这里可以被系统检测到*/
@@ -461,8 +471,8 @@ int dir_close_inode(struct dir *pdir,_ci struct inode *pi)
 		pdir->d_data.i_rcnt --;
 	}
 	result = VALID;
-	if (NULL!=pdir->d_op&&NULL!=pdir->d_op->closeinode)
-		result = pdir->d_op->closeinode(pdir,pi);
+	if (NULL!=pdir->d_data.d_op&&NULL!=pdir->d_data.d_op->closeinode)
+		result = pdir->d_data.d_op->closeinode(pdir,pi);
 	inode_cache_free(pi);
 
 	/*在这里直接释放空间，如果有野指针指向这里可以被系统检测到*/
@@ -692,6 +702,7 @@ int module_init(void)
 	MODULE_INIT(vga)
 	MODULE_INIT(tty)
 	MODULE_INIT(ide)
+	MODULE_INIT(mfs)
 	DO_MODULE_INIT_END
 	return VALID;
 }
