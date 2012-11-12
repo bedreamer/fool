@@ -1,3 +1,8 @@
+/*
+ *	mfs.c
+ *  cuplision@163.com
+ *  Mon 12 Nov 2012 07:28:05 PM CST 
+ */
 #include <kernel/kernel.h>
 #include <kernel/mm.h>
 #include <kernel/int.h>
@@ -36,7 +41,7 @@ int mfs_startup()
 }
 
 /*设备挂载响应函数*/
-int mfs_mount(struct inode *pi,void ** mntprivate)
+int mfs_mount(struct inode *pi,struct itemdata *pdir,void ** mntprivate)
 {
 	if (NULL==pi||NULL==mntprivate) return INVALID;
 	if (ITYPE_BLK_DEV!=pi->i_data.i_attrib.i_type) return INVALID;
@@ -216,65 +221,65 @@ int mfs_readattrib(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *
 
 /*--------------------------------------------------------------------------------------*/
 /*读取一个数据块*/
-int mfsr_device(struct itemdata *pi,_co void *ptr,size_t sctnum)
+int mfsr_device(struct itemdata *pdev,_co void *ptr,size_t sctnum)
 {
-	if (NULL==pi||NULL==ptr||sctnum>pi->i_attrib.i_size) return INVALID;
-	if (NULL==pi->f_op||NULL==pi->f_op->kread) return INVALID;
-	return pi->f_op->kread(pi,ptr,sctnum,1);
+	if (NULL==pdev||NULL==ptr||sctnum>pdev->i_attrib.i_size) return INVALID;
+	if (NULL==pdev->f_op||NULL==pdev->f_op->kread) return INVALID;
+	return pdev->f_op->kread(pdev,ptr,sctnum,1);
 }
 
 /*从指定的块偏移处读取一个数据块*/
-int mfsr_device_ex(struct itemdata *pi,_co void *ptr,size_t sctnum,foff_t offset,int cnt)
+int mfsr_device_ex(struct itemdata *pdev,_co void *ptr,size_t sctnum,foff_t offset,int cnt)
 {
-	if (0==offset&&SECTOR_SIZE==cnt) return mfsr_device(pi,ptr,sctnum);
+	if (0==offset&&SECTOR_SIZE==cnt) return mfsr_device(pdev,ptr,sctnum);
 	if (offset<0||cnt<0) return INVALID;
 	if (SECTOR_SIZE<offset+cnt) return INVALID;
-	if (NULL==pi||NULL==ptr||sctnum>pi->i_attrib.i_size) return INVALID;
-	if (NULL==pi->f_op||NULL==pi->f_op->kread) return INVALID;
+	if (NULL==pdev||NULL==ptr||sctnum>pdev->i_attrib.i_size) return INVALID;
+	if (NULL==pdev->f_op||NULL==pdev->f_op->kread) return INVALID;
 
 	char sct_buff[SECTOR_SIZE];
-	int result = mfsr_device(pi,sct_buff,sctnum);
+	int result = mfsr_device(pdev,sct_buff,sctnum);
 	if (INVALID==result) return INVALID;
 	memcpy(ptr,&sct_buff[offset],cnt);
 	return VALID;
 }
 
 /*写入一个数据块*/
-int mfsw_device(struct itemdata *pi,const _ci void *ptr,size_t sctnum)
+int mfsw_device(struct itemdata *pdev,const _ci void *ptr,size_t sctnum)
 {
-	if (NULL==pi||NULL==ptr||sctnum>pi->i_attrib.i_size) return INVALID;
-	if (NULL==pi->f_op||NULL==pi->f_op->kwrite) return INVALID;
-	return pi->f_op->kwrite(pi,ptr,sctnum,1);
+	if (NULL==pdev||NULL==ptr||sctnum>pdev->i_attrib.i_size) return INVALID;
+	if (NULL==pdev->f_op||NULL==pdev->f_op->kwrite) return INVALID;
+	return pdev->f_op->kwrite(pdev,ptr,sctnum,1);
 }
 
 /*向指定块偏移处写入一个数据块*/
-int mfsw_device_ex(struct itemdata *pi,const _ci void *ptr,size_t sctnum,foff_t offset,int cnt)
+int mfsw_device_ex(struct itemdata *pdev,const _ci void *ptr,size_t sctnum,foff_t offset,int cnt)
 {
-	if (0==offset&&SECTOR_SIZE==cnt) return mfsw_device(pi,ptr,sctnum);
+	if (0==offset&&SECTOR_SIZE==cnt) return mfsw_device(pdev,ptr,sctnum);
 	if (offset<0||cnt<0) return INVALID;
 	if (SECTOR_SIZE<offset+cnt) return INVALID;
-	if (NULL==pi||NULL==ptr||sctnum>pi->i_attrib.i_size) return INVALID;
-	if (NULL==pi->f_op||NULL==pi->f_op->kwrite) return INVALID;
+	if (NULL==pdev||NULL==ptr||sctnum>pdev->i_attrib.i_size) return INVALID;
+	if (NULL==pdev->f_op||NULL==pdev->f_op->kwrite) return INVALID;
 
 	char sct_buff[SECTOR_SIZE];
-	int result = mfsr_device(pi,sct_buff,sctnum);
+	int result = mfsr_device(pdev,sct_buff,sctnum);
 	if (INVALID==result) return INVALID;
 	memcpy(&sct_buff[offset],ptr,cnt);
-	result = mfsw_device(pi,sct_buff,sctnum);
+	result = mfsw_device(pdev,sct_buff,sctnum);
 	if (INVALID==result) return INVALID;
 	return VALID;
 }
 
 /*读取分区超级块信息*/
-int mfsr_superblk(struct itemdata *pi,struct mfs_super_blk *psblk)
+int mfsr_superblk(struct itemdata *pdev,struct mfs_super_blk *psblk)
 {
-	return mfsr_device_ex(pi,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
+	return mfsr_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
 }
 
 /*写入分区超级块信息*/
-int mfsw_superblk(struct itemdata *pi,const struct mfs_super_blk *psblk)
+int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 {
-	return mfsw_device_ex(pi,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
+	return mfsw_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
 }
 
 /*分配一个cluster*/
@@ -289,9 +294,54 @@ void mfs_free_cluster(struct itemdata *pitd,struct mfs_super_blk *psblk,size_t c
 }
 
 /*---------------------------------------------------------------------------------------*/
-/*在指定目录中创建一个非文件节点*/
+/*在指定目录中创建一个非文件夹节点*/
 int mfs_do_mkinode(struct itemdata *pdir,struct itemattrib *pitm,_ci const char *nodename)
 {
+	if (NULL==pdir||NULL==nodename) return INVALID;
+	if (ITYPE_DIR!=pdir->i_attrib.i_type) return INVALID;
+	if (NULL==pdir->i_root||NULL==pdir->i_root->mnt_dev) return INVALID;
+
+	struct file_op *dev_op=NULL;
+	dev_op = pdir->i_root->mnt_dev->i_data.f_op;
+	if (NULL==dev_op||NULL==dev_op->kread||NULL==dev_op->kwrite) return INVALID;
+
+	struct mfs_core *pc = (struct mfs_core *)(pdir->i_private);
+	if (NULL==pc) return INVALID;
+	if (pc->m_cluster > pc->m_super->clst_cnt) return INVALID;
+
+	struct mfs_inode inode_buf[MFS_INODES_PER_SCT]={{{0}}};
+	int i,j,m;
+
+	for (i=0;i<MFS_FAT_CNT;i++)
+	{
+		if (MFS_INVALID_CLUSTER!=pc->i_fat[i])
+		{
+			for (j=0;j<MFS_SCTS_PERCLUSTER;i++)
+			{
+				int result=dev_op->kread(&(pdir->i_root->mnt_dev->i_data),
+					(char*)inode_buf,
+					pc->i_fat[i]*MFS_SCTS_PERCLUSTER+j,
+					1);
+				if (INVALID==result) goto end;
+				for (m=0;m<MFS_INODES_PER_SCT;m++)
+				{
+					if (((inode_buf[m].m_attrib&ITYPE_ARCHIVE)||
+					    (inode_buf[m].m_attrib&ITYPE_DIR)||
+					    (inode_buf[m].m_attrib&ITYPE_DEVICE))
+					{
+						if (0==strncmp(nodename,
+							(char*)inode_buf[m].m_name,K_MAX_LEN_NODE_NAME))
+							return INVALID;
+					}
+					else
+					{
+					}
+				}
+			}
+		}
+		else goto end;
+	}
+end:
 	return INVALID;
 }
 
@@ -317,6 +367,80 @@ int mfs_do_rmdir(struct itemdata *pdir,_ci const char *nodename)
 int mfs_do_checkitem(struct itemdata *pdir,_co struct itemattrib *pitm,_co const char *nodename)
 {
 	if (NULL==pdir||NULL==nodename) return INVALID;
+	if (ITYPE_DIR!=pdir->i_attrib.i_type) return INVALID;
+	if (NULL==pdir->i_root||NULL==pdir->i_root->mnt_dev) return INVALID;
+
+	struct file_op *dev_op=NULL;
+	dev_op = pdir->i_root->mnt_dev->i_data.f_op;
+	if (NULL==dev_op||NULL==dev_op->kread) return INVALID;
+
+	struct mfs_core *pc = (struct mfs_core *)(pdir->i_private);
+	if (NULL==pc) return INVALID;
+	if (pc->m_cluster > pc->m_super->clst_cnt) return INVALID;
+	int i;
+	for (i=0;i<MFS_FAT_CNT;i++)
+	{
+		if (MFS_INVALID_CLUSTER==pc->i_fat[i]) return INVALID;
+		int result = mfs_do_checkite_inclst(pdir,pitm,pc->i_fat[i],nodename);
+		if (VALID==result) return VALID;
+	}
+	return INVALID;
+}
+
+/*检查簇中是否有指定节点*/
+int mfs_do_checkite_inclst(struct itemdata *pdir,_co struct itemattrib *pitm,clust_t clsnum,_ci const char *nodename)
+{
+	int i;
+	for (i=0;i<MFS_SCTS_PERCLUSTER;i++)
+	{
+		int result = mfs_do_checkitem_insct(pdir,pitm,clsnum*MFS_SCTS_PERCLUSTER+i,nodename);
+		if (VALID==result) return VALID;
+	}
+	return INVALID;
+}
+
+/*检查指定的扇区中是否存在指定节点*/
+int mfs_do_checkitem_insct(struct itemdata *pdir,_co struct itemattrib *pitm,size_t sctnum,_ci const char *nodename)
+{
+	if (NULL==pdir||NULL==nodename) return INVALID;
+	if (ITYPE_DIR!=pdir->i_attrib.i_type) return INVALID;
+	if (NULL==pdir->i_root||NULL==pdir->i_root->mnt_dev) return INVALID;
+
+	struct file_op *dev_op=NULL;
+	dev_op = pdir->i_root->mnt_dev->i_data.f_op;
+	if (NULL==dev_op||NULL==dev_op->kread) return INVALID;
+
+	struct mfs_core *pc = (struct mfs_core *)(pdir->i_private);
+	if (NULL==pc) return INVALID;
+	if (pc->m_cluster > pc->m_super->clst_cnt) return INVALID;
+	if (sctnum>pc->m_super->sct_cnt) return INVALID;
+
+	struct mfs_inode inode_buf[MFS_INODES_PER_SCT]={{{0}}};
+	int result=dev_op->kread(&(pdir->i_root->mnt_dev->i_data),(char*)inode_buf,sctnum,1);
+	if (INVALID==result) return INVALID;
+
+	int i;
+	for (i=0;i<MFS_INODES_PER_SCT;i++)
+	{
+		if (inode_buf[i].m_attrib&ITYPE_ALIVE)
+		{
+			if (0==strncmp(inode_buf[i].m_name,nodename,K_MAX_LEN_NODE_NAME))
+			{
+				if (NULL!=pitm)
+				{
+					pitm->d_create = inode_buf[i].d_create;
+					pitm->d_lastaccess = inode_buf[i].d_lastaccess;
+					pitm->i_devnum = inode_buf[i].m_devnum;
+					pitm->i_size = inode_buf[i].m_size;
+					pitm->i_type = inode_buf[i].m_attrib;
+					pitm->t_create = inode_buf[i].t_create;
+					pitm->t_lastaccess = inode_buf[i].t_lastaccess;
+				}
+				return VALID;
+			}
+		}
+	}
+	return INVALID;
 }
 
 /*更新一个节点的基本信息*/
