@@ -37,6 +37,7 @@ void getsystime(struct sys_time *);
   31       23       15       7        0
  */
 #define MAKETIME(hour,min,sec) (((hour&0x000000FF)<<16)|((min&0x000000FF)<<8)|((sec&0x000000FF)))
+
 /* 
  * date_t
   +--------+--------+--------+--------+

@@ -63,6 +63,7 @@ typedef int foff_t;
 #define _u_o_ _user_out_
 #define _c_i_ _core_in_
 #define _c_o_ _core_out_
+#define _c_io_ _core_inout_
 
 #define _ui_ _u_i_
 #define _ui _ui_
@@ -72,6 +73,7 @@ typedef int foff_t;
 #define _ci _ci_
 #define _co_ _c_o_
 #define _co _co_
+#define _cio _c_io_
 
 // debug contrl macro
 //#define PAGE_DEBUG

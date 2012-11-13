@@ -526,7 +526,8 @@ int sys_check_taskfile(struct task_struct *ptsk,const struct inode *pi)
 
 	get_spinlock(ptsk->t_flck);
 	for (i=0;i<K_MAX_FILE_OPEN_PPS;i++)
-		if (NULL!=ptsk->t_file[i]&&pi==ptsk->t_file[i]->f_pi){
+		if (NULL!=ptsk->t_file[i]&&pi==ptsk->t_file[i]->f_pi)
+		{
 			fd = i;
 			break;
 		}
