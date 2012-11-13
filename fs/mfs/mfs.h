@@ -115,6 +115,21 @@ extern int mfsw_superblk(struct itemdata *,const struct mfs_super_blk *);
 
 extern clust_t mfs_alloc_cluster(struct itemdata *,struct mfs_super_blk *);
 extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,clust_t);
+
+/* 读写接口不统一，并且可能会频繁访问到目录中的每一个节点,直接使用回调函数来遍历目录中的所有节点 
+ * 在这里回调可以完成节点查找，节点删除，增加节点，修改节点.
+ * .NOTE 在进行回调前必须对传入的itemattrib中的i_name字段进行初始化，其他属性需要根据执行的需求进行
+ * 初始化.
+ */
+typedef mfs_result int;
+#define MFS_RESULT_ABORT	   -1	/*终止回调过程,回调函数失败,主函数返回*/
+#define MFS_RESULT_DONE			1	/*终止回调过程,回调函数成功,主函数返回*/
+#define MFS_RESULT_CONTINUE		2	/*继续执行回调*/
+#define MFS_RESULT_WRITEBACK	3	/*将回调后的结果写回设备*/
+typedef mfs_result (*mfs_proc)(struct itemdata *,_ci struct mfs_inode *,_cio struct itemattrib *,int);
+extern int mfs_foreachinode(struct itemdata *,struct itemattrib *,mfs_proc);
+extern mfs_result mfs_do_search(struct itemdata *,_ci struct mfs_inode *,_cio struct itemattrib *,int);
+
 #endif /*_MFS_*/
 
 
