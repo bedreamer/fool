@@ -14,7 +14,7 @@ DRIVERTAG =drivers/ide.o drivers/keymap_US.o drivers/keyboard.o drivers/console.
 FSTAG =fs/mfs/mfs.o
 
 KFOOL : $(KERNELTAG) $(MMTAG) $(DRIVERTAG) $(FSTAG)
-	$(LD) $(KERNELTAG) $(MMTAG) $(DRIVERTAG) $(FSTAG) -s -o KFOOL -L .obj -ldcrt --Map=fool.map -Ttext=0x01001000
+	$(LD) $(KERNELTAG) $(MMTAG) $(DRIVERTAG) $(FSTAG) -s -o KFOOL -L lib/ -lcrt --Map=fool.map -Ttext=0x01001000
 
 image : KFOOL
 	./mkimg
