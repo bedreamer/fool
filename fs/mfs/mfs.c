@@ -199,9 +199,14 @@ int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *noden
 {
 	if (NULL==pdir||NULL==pitm||NULL==nodename) return INVALID;
 	struct mfs_inode mp={{0}};
+	struct itemdata *pdev;
+	struct mfs_super_blk *sblk;
+	struct mfs_core *pc;
+
 	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
 	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
 	if (VALID==result) return INVALID;
+
 	mp.d_create = getdate();
 	mp.t_create = gettime();
 	mp.d_lastaccess = mp.d_create;
@@ -209,9 +214,19 @@ int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *noden
 	mp.m_attrib = ITYPE_DIR;
 	mp.m_devnum = 0;
 	mp.m_size = 0;
+	
+	pdev = &(pdir->d_data.i_root->mnt_dev->i_data);
+	sblk = ((struct mfs_core*)(pdir->i_private))->m_super;
+	pc = (struct mfs_core*)(pdir->i_private);
+
+	clust_t cluster = mfs_alloc_cluster(pdev,sblk);
+
+	mp.m_fat[0] = cluster;
+
+	if (MFS_INVALID_CLUSTER==mp.m_fat[0]) return INVALID;
 	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
 	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
-	if (INVALID==result) return INVALID;
+	if (INVALID==result) goto faile;
 	if (NULL!=pitm)
 	{
 		pitm->d_create = mp.d_create;
@@ -222,7 +237,21 @@ int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *noden
 		pitm->t_create= mp.t_create;
 		pitm->t_lastaccess = mp.t_lastaccess;
 	}
+
+	strncpy(md.m_name,".",K_MAX_LEN_NODE_NAME);
+	mp.m_fat[0] = cluster;
+	mp.m_attrib = ITYPE_DIR;
+	mfsw_device_ex(pdev,&md,CLUSTER2SECT(cluster),0,MFS_INODESIZE);
+
+	strncpy(md.m_name,"..",K_MAX_LEN_NODE_NAME);
+	mp.m_fat[0] = pc->m_cluster;
+	mp.m_attrib = ITYPE_DIR;
+	mfsw_device_ex(pdev,&md,CLUSTER2SECT(cluster),MFS_INODESIZE,MFS_INODESIZE);
+
 	return VALID;
+faile:
+	mfsw_superblk(pdev,sblk,cluster);
+	return INVALID;
 }
 
 extern int mfs_rm   (struct dir *,_ci const char *);
@@ -338,6 +367,18 @@ int mfsr_superblk(struct itemdata *pdev,struct mfs_super_blk *psblk)
 int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 {
 	return mfsw_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
+}
+
+/*分配一个簇*/
+clust_t mfs_alloc_cluster(struct itemdata *pdev,struct mfs_super_blk *psblk)
+{
+	char buf[SECTOR_SIZE];
+	return MFS_INVALID_CLUSTER;
+}
+
+/*释放一个簇*/
+void mfs_free_cluster(struct itemdata *pdev,struct mfs_super_blk *psblk,clust_t clustnum)
+{
 }
 
 /*遍历目录中的每一个节点直到回调函数要求退出或遍历完每个节点*/
