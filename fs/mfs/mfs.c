@@ -11,18 +11,11 @@
 
 struct file_op mfs_fop=
 {
-	.open=mfs_open,.close=mfs_close,
-	.read=mfs_read,.write=mfs_write,
-	.ioctl=mfs_ioctl,.kread=mfs_kread
+	.open=mfs_open,.close=mfs_close
 };
 struct dir_op mfs_dop=
 {
-	.mknode=mfs_mknode,.touch=mfs_touch,
-	.mkdir=mfs_mkdir,.rm=mfs_rm,
-	.rmdir=mfs_rmdir,.rename=mfs_rename,
-	.opendir=mfs_opendir,.closedir=mfs_closedir,
-	.openinode=mfs_openinode,.closeinode=mfs_closeinode,
-	.readitem=mfs_readitem,.readattrib=mfs_readattrib
+	NULL
 };
 struct fs_struct mfs_struct=
 {
@@ -41,7 +34,7 @@ int mfs_startup()
 }
 
 /*设备挂载响应函数*/
-int mfs_mount(struct inode *pi,struct itemdata *pdir,void ** mntprivate)
+int mfs_mount(struct inode *pi,struct itemdata *proot,void ** mntprivate)
 {
 	if (NULL==pi||NULL==mntprivate) return INVALID;
 	if (ITYPE_BLK_DEV!=pi->i_data.i_attrib.i_type) return INVALID;
@@ -126,97 +119,13 @@ int mfs_mkfs(struct inode *pi,const char *lable)
 /*仅仅用来通知文件系统驱动*/
 int mfs_open(struct file *pf,struct inode *pi)
 {
-	return INVALID; /*总是打开成功*/
+	return VALID; /*总是打开成功*/
 }
 
+/*仅仅用来通知文件系统驱动*/
 int mfs_close(struct file *pf,struct inode *pi)
 {
-	return INVALID;
-}
-
-int mfs_read(struct file *pf,_uo char *ptr,foff_t foff,_uo foff_t *fptr,int cnt)
-{
-	return INVALID;
-}
-
-int mfs_write(struct file *pf,_ui const char *ptr,foff_t poff,_uo foff_t *fptr,int cnt)
-{
-	return INVALID;
-}
-
-int mfs_ioctl(struct file *pf,int cmd,int para)
-{
-	return INVALID;
-}
-
-int mfs_kread(struct itemdata *pi,_co char * ptr,foff_t foff,int cnt)
-{
-	return INVALID;
-}
-
-int mfs_kwrite(struct itemdata *pi,_ci const char *ptr,foff_t foff,int cnt)
-{
-	return INVALID;
-}
-
-int mfs_mknode(struct dir *pdir,struct itemattrib *pitm,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-int mfs_touch(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-int mfs_rm   (struct dir *pdir,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-int mfs_rmdir(struct dir *pdir,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-int mfs_rename(struct dir *pdir,struct itemattrib *pitm,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-int mfs_opendir(struct dir *pdir,_co struct itemdata *pitm,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-int mfs_closedir(struct dir *pdir,struct itemdata *pitm)
-{
-	return INVALID;
-}
-
-int mfs_openinode(struct dir *pdir,_co struct inode *pi,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-int mfs_closeinode(struct dir *pdir,_co struct inode *pi)
-{
-	return INVALID;
-}
-
-int mfs_readitem(struct dir *pdir,_co struct itemattrib *pitm,int index)
-{
-	return INVALID;
-}
-
-int mfs_readattrib(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
-{
-	return INVALID;
+	return VALID; /*总是关闭成功*/
 }
 
 /*--------------------------------------------------------------------------------------*/
@@ -281,163 +190,3 @@ int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 {
 	return mfsw_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
 }
-
-/*分配一个cluster*/
-size_t mfs_alloc_cluster(struct itemdata *pitm,struct mfs_super_blk *psblk)
-{
-	return MFS_INVALID_CLUSTER;
-}
-
-/*释放一个cluster*/
-void mfs_free_cluster(struct itemdata *pitd,struct mfs_super_blk *psblk,size_t clsnum)
-{
-}
-
-/*---------------------------------------------------------------------------------------*/
-/*在指定目录中创建一个非文件夹节点*/
-int mfs_do_mkinode(struct itemdata *pdir,struct itemattrib *pitm,_ci const char *nodename)
-{
-	if (NULL==pdir||NULL==nodename) return INVALID;
-	if (ITYPE_DIR!=pdir->i_attrib.i_type) return INVALID;
-	if (NULL==pdir->i_root||NULL==pdir->i_root->mnt_dev) return INVALID;
-
-	struct file_op *dev_op=NULL;
-	dev_op = pdir->i_root->mnt_dev->i_data.f_op;
-	if (NULL==dev_op||NULL==dev_op->kread||NULL==dev_op->kwrite) return INVALID;
-
-	struct mfs_core *pc = (struct mfs_core *)(pdir->i_private);
-	if (NULL==pc) return INVALID;
-	if (pc->m_cluster > pc->m_super->clst_cnt) return INVALID;
-	int result = mfs_do_checkitem(pdir,pitm,nodename);
-	if (VALID==result) return INVALID;
-	return INVALID;
-}
-
-/*从指定的目录中删除一个非文件夹节点*/
-int mfs_do_rminode(struct itemdata *pdir,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-/*在指定目录中创建一个目录*/
-int mfs_do_mkdir(struct itemdata *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-/*从指定目录中删除一个目录节点*/
-int mfs_do_rmdir(struct itemdata *pdir,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-/*检查目录中是否存在指定的节点*/
-int mfs_do_checkitem(struct itemdata *pdir,_co struct itemattrib *pitm,_co const char *nodename)
-{
-	if (NULL==pdir||NULL==nodename) return INVALID;
-	if (ITYPE_DIR!=pdir->i_attrib.i_type) return INVALID;
-	if (NULL==pdir->i_root||NULL==pdir->i_root->mnt_dev) return INVALID;
-
-	struct file_op *dev_op=NULL;
-	dev_op = pdir->i_root->mnt_dev->i_data.f_op;
-	if (NULL==dev_op||NULL==dev_op->kread) return INVALID;
-
-	struct mfs_core *pc = (struct mfs_core *)(pdir->i_private);
-	if (NULL==pc) return INVALID;
-	if (pc->m_cluster > pc->m_super->clst_cnt) return INVALID;
-	int i;
-	for (i=0;i<MFS_FAT_CNT;i++)
-	{
-		if (MFS_INVALID_CLUSTER==pc->i_fat[i]) return INVALID;
-		int result = mfs_do_checkite_inclst(pdir,pitm,pc->i_fat[i],nodename);
-		if (VALID==result) return VALID;
-	}
-	return INVALID;
-}
-
-/*检查簇中是否有指定节点*/
-int mfs_do_checkite_inclst(struct itemdata *pdir,_co struct itemattrib *pitm,clust_t clsnum,_ci const char *nodename)
-{
-	int i;
-	for (i=0;i<MFS_SCTS_PERCLUSTER;i++)
-	{
-		int result = mfs_do_checkitem_insct(pdir,pitm,clsnum*MFS_SCTS_PERCLUSTER+i,nodename);
-		if (VALID==result) return VALID;
-	}
-	return INVALID;
-}
-
-/*检查指定的扇区中是否存在指定节点*/
-int mfs_do_checkitem_insct(struct itemdata *pdir,_co struct itemattrib *pitm,size_t sctnum,_ci const char *nodename)
-{
-	if (NULL==pdir||NULL==nodename) return INVALID;
-	if (ITYPE_DIR!=pdir->i_attrib.i_type) return INVALID;
-	if (NULL==pdir->i_root||NULL==pdir->i_root->mnt_dev) return INVALID;
-
-	struct file_op *dev_op=NULL;
-	dev_op = pdir->i_root->mnt_dev->i_data.f_op;
-	if (NULL==dev_op||NULL==dev_op->kread) return INVALID;
-
-	struct mfs_core *pc = (struct mfs_core *)(pdir->i_private);
-	if (NULL==pc) return INVALID;
-	if (pc->m_cluster > pc->m_super->clst_cnt) return INVALID;
-	if (sctnum>pc->m_super->sct_cnt) return INVALID;
-
-	struct mfs_inode inode_buf[MFS_INODES_PER_SCT]={{{0}}};
-	int result=dev_op->kread(&(pdir->i_root->mnt_dev->i_data),(char*)inode_buf,sctnum,1);
-	if (INVALID==result) return INVALID;
-
-	int i;
-	for (i=0;i<MFS_INODES_PER_SCT;i++)
-	{
-		if (inode_buf[i].m_attrib&ITYPE_ALIVE)
-		{
-			if (0==strncmp((char*)inode_buf[i].m_name,nodename,K_MAX_LEN_NODE_NAME))
-			{
-				if (NULL!=pitm)
-				{
-					pitm->d_create = inode_buf[i].d_create;
-					pitm->d_lastaccess = inode_buf[i].d_lastaccess;
-					pitm->i_devnum = inode_buf[i].m_devnum;
-					pitm->i_size = inode_buf[i].m_size;
-					pitm->i_type = inode_buf[i].m_attrib;
-					pitm->t_create = inode_buf[i].t_create;
-					pitm->t_lastaccess = inode_buf[i].t_lastaccess;
-				}
-				return VALID;
-			}
-		}
-	}
-	return INVALID;
-}
-
-/*更新一个节点的基本信息*/
-int mfs_do_updateitem(struct itemdata *pdir,_ci struct itemattrib *pitm,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-/*打开一个非文件节点*/
-int mfs_do_openinode(struct itemdata *pdir,_co struct itemdata *ppitd,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-/*打开一个文件夹节点*/
-int mfs_do_opendir(struct itemdata *pdir,_co struct itemdata *ppitd,_ci const char *nodename)
-{
-	return INVALID;
-}
-
-/*关闭一个非文件夹节点*/
-int mfs_do_closeinode(struct itemdata *pdir,_ci struct itemdata *ppitd)
-{
-	return INVALID;
-}
-
-/*关闭一个文件夹节点*/
-int mfs_do_closedir(struct itemdata *pdir,_ci struct itemdata *ppitd)
-{
-	return INVALID;
-}
-

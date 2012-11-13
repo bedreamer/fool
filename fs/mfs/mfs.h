@@ -105,24 +105,6 @@ extern int mfs_umount(struct inode *,void **);
 
 extern int mfs_open(struct file *,struct inode *);
 extern int mfs_close(struct file *,struct inode *);
-extern int mfs_read(struct file *,_uo char *,foff_t,_uo foff_t *,int);
-extern int mfs_write(struct file *,_ui const char *,foff_t,_uo foff_t *,int);
-extern int mfs_ioctl(struct file *,int,int);
-extern int mfs_kread(struct itemdata *,_co char *,foff_t,int cnt);
-extern int mfs_kwrite(struct itemdata *,_ci const char *,foff_t,int);
-
-extern int mfs_mknode(struct dir *,struct itemattrib *,_ci const char *);
-extern int mfs_touch(struct dir *,_co struct itemattrib *,_ci const char *);
-extern int mfs_mkdir(struct dir *,_co struct itemattrib *,_ci const char *);
-extern int mfs_rm   (struct dir *,_ci const char *);
-extern int mfs_rmdir(struct dir *,_ci const char *);
-extern int mfs_rename(struct dir *,struct itemattrib *,_ci const char *);
-extern int mfs_opendir(struct dir *,_co struct itemdata *,_ci const char *);
-extern int mfs_closedir(struct dir *,struct itemdata *);
-extern int mfs_openinode(struct dir *,_co struct inode *,_ci const char *);
-extern int mfs_closeinode(struct dir *,_co struct inode *);
-extern int mfs_readitem(struct dir *,_co struct itemattrib *,int);
-extern int mfs_readattrib(struct dir *,_co struct itemattrib *,_ci const char *);
 
 extern int mfsr_device(struct itemdata *,_co void *,size_t);
 extern int mfsr_device_ex(struct itemdata *,_co void *,size_t,foff_t,int);
@@ -132,35 +114,7 @@ extern int mfsr_superblk(struct itemdata *,struct mfs_super_blk *);
 extern int mfsw_superblk(struct itemdata *,const struct mfs_super_blk *);
 
 extern clust_t mfs_alloc_cluster(struct itemdata *,struct mfs_super_blk *);
-extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,size_t);
-
-extern int mfs_allocfileinode_sct(struct itemdata *,size_t,_ci const char *);
-extern int mfs_freefileinode_sct(struct itemdata *,size_t,_ci const char *);
-extern int mfs_allocdevinode_sct(struct itemdata *,size_t,dev_t,_ci const char *);
-extern int mfs_freedevinode_sct(struct itemdata *,size_t,dev_t *,_ci const char *);
-extern int mfs_allocdirinode_sct(struct itemdata *,clust_t,size_t,_ci const char *);
-extern int mfs_freedirinode_sct(struct itemdata *,clust_t *,size_t,_ci const char *);
-extern int mfs_allocfileinode_clust(struct itemdata *,_ci const char *);
-extern int mfs_freefileinode_clust(struct itemdata *,_ci const char *);
-extern int mfs_allocdevinode_clust(struct itemdata *,dev_t,_ci const char *);
-extern int mfs_freedevinode_clust(struct itemdata *,dev_t *,_ci const char *);
-extern int mfs_allocdirinode_clust(struct itemdata *,clust_t,_ci const char *);
-extern int mfs_freedirinode_clust(struct itemdata *,clust_t *,_ci const char *);
-
-extern int mfs_checkitem_sct(struct itemdata *,struct itemattrib *,size_t,_ci const char *);
-extern int mfs_checkitem_clust(struct itemdata *,struct itemattrib *,_ci const char *);
-
-extern int mfs_do_mkinode(struct itemdata *,struct itemattrib *,_ci const char *);
-extern int mfs_do_rminode(struct itemdata *,_ci const char *);
-extern int mfs_do_mkdir(struct itemdata *,_co struct itemattrib *,_ci const char *);
-extern int mfs_do_rmdir(struct itemdata *,_ci const char *);
-extern int mfs_do_checkitem(struct itemdata *,_co struct itemattrib *,_ci const char *);
-extern int mfs_do_updateitem(struct itemdata *,_ci struct itemattrib *,_ci const char *);
-extern int mfs_do_openinode(struct itemdata *,_co struct itemdata *,_ci const char *);
-extern int mfs_do_opendir(struct itemdata *,_co struct itemdata *,_ci const char *);
-extern int mfs_do_closeinode(struct itemdata *,_ci struct itemdata *);
-extern int mfs_do_closedir(struct itemdata *,_ci struct itemdata *);
-
+extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,clust_t);
 #endif /*_MFS_*/
 
 
