@@ -190,3 +190,49 @@ int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 {
 	return mfsw_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
 }
+
+/*遍历目录中的每一个节点直到回调函数要求退出或遍历完每个节点*/
+int mfs_foreachinode(struct itemdata *pdir,struct itemattrib *pitm,mfs_proc mfs_func)
+{
+	if (NULL==pdir||NULL==mfs_func||NULL==pitm) return INVALID;
+	if (ITYPE_DIR!=pdir->i_attrib.i_type) return INVALID;
+	if (NULL==pdir->i_private||NULL==pdir->i_root) return INVALID;
+	if (NULL==pdir->i_root->mnt_dev) return INVALID;
+
+	struct mfs_core *pc = pdir->i_private;
+	struct mfs_inode mfs_buf[MFS_INODES_PER_SCT];
+	struct itemdata *pdev = &(pdir->i_root->mnt_dev->i_data);
+	int i,j,k,result;
+
+	for (i=0;i<MFS_FAT_CNT;i++)
+	{
+		if (MFS_INVALID_CLUSTER==pc->i_fat[i]) return INVALID;
+		for (j=0;j<MFS_SCTS_PERCLUSTER;j++)
+		{
+			result = mfsr_device(pdev,mfs_buf,pc->i_fat[i]*MFS_SCTS_PERCLUSTER+j);
+			if (INVALID==result) return INVALID;
+			for (k=0;k<MFS_INODES_PER_SCT;k++)
+			{
+				result = 
+				mfs_func(pdir,&mfs_buf[k],pitm,i*MFS_SCTS_PERCLUSTER*MFS_SCTS_PERCLUSTER+k);
+				switch (result)
+				{
+					case MFS_RESULT_ABORT:			/*终止回调过程,回调函数失败,主函数返回*/
+						return INVALID;
+					case MFS_RESULT_DONE:			/*终止回调过程,回调函数成功,主函数返回*/
+						return VALID;
+					case MFS_RESULT_CONTINUE:		/*继续执行回调*/
+						break;
+					case MFS_RESULT_WRITEBACK:		/*将回调后的结果写回设备*/
+						return mfsw_device(pdev,mfs_buf,CLUSTER2SECT(pc->i_fat[i])+j);
+					case MFS_RESULT_WRITEBACK_EX:	/*将回调后的结果写回设备,后主函数继续执行*/
+						result = mfsw_device(pdev,mfs_buf,CLUSTER2SECT(pc->i_fat[i])+j);
+						if (INVALID==result) return INVALID;
+						break;
+					default: return INVALID;			/*无效的返回值将导致直接返回错误*/
+				}
+			}
+		}
+	}
+	return INVALID;
+}
