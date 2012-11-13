@@ -192,7 +192,7 @@ int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 }
 
 /*遍历目录中的每一个节点直到回调函数要求退出或遍历完每个节点*/
-int mfs_foreachinode(struct itemdata *pdir,struct itemattrib *pitm,mfs_proc mfs_func)
+int mfs_foreachinode(struct itemdata *pdir,struct mfs_inode *pitm,mfs_ex_proc mfs_func)
 {
 	if (NULL==pdir||NULL==mfs_func||NULL==pitm) return INVALID;
 	if (ITYPE_DIR!=pdir->i_attrib.i_type) return INVALID;
@@ -235,4 +235,50 @@ int mfs_foreachinode(struct itemdata *pdir,struct itemattrib *pitm,mfs_proc mfs_
 		}
 	}
 	return INVALID;
+}
+
+/*搜索目录中是否存在节点*/
+mfs_result mfs_ex_searchitem(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index)
+{
+	if (0==strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
+		return MFS_RESULT_CONTINUE;
+	if (0!=strncmp(pin->m_name,pim->m_name,K_MAX_LEN_NODE_NAME))
+		return MFS_RESULT_CONTINUE;
+	memcpy(pim,pin,sizeof(struct mfs_inode));
+	return MFS_RESULT_DONE;
+}
+
+/*在目录中创建节点*/
+mfs_result mfs_ex_mkmfsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index)
+{
+	if (0!=strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
+		return MFS_RESULT_CONTINUE;
+	memcpy(pin,pim,sizeof(struct mfs_inode));
+	return MFS_RESULT_WRITEBACK;
+}
+
+/*从目录中删除节点*/
+mfs_result mfs_ex_rmmfsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index)
+{
+	if (0==strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
+		return MFS_RESULT_CONTINUE;
+	if (0!=strncmp(pin->m_name,pim->m_name,K_MAX_LEN_NODE_NAME))
+	{
+		memcpy(pim,pin,sizeof(struct mfs_inode));
+		memset(pin,0,sizeof(struct mfs_inode));
+		return MFS_RESULT_DONE;
+	}
+	return MFS_RESULT_CONTINUE;
+}
+
+mfs_result mfs_ex_updatefsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index)
+{
+	if (0==strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
+		return MFS_RESULT_CONTINUE;
+	if (0!=strncmp(pin->m_name,pim->m_name,K_MAX_LEN_NODE_NAME))
+	{
+		memcpy(pin,pim,sizeof(struct mfs_inode));
+		return MFS_RESULT_DONE;
+	}
+	return MFS_RESULT_CONTINUE;
 }
