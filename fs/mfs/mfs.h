@@ -124,46 +124,41 @@ extern int mfs_closeinode(struct dir *,_co struct inode *);
 extern int mfs_readitem(struct dir *,_co struct itemattrib *,int);
 extern int mfs_readattrib(struct dir *,_co struct itemattrib *,_ci const char *);
 
-/*读取一个数据块*/
 extern int mfsr_device(struct itemdata *,_co void *,size_t);
-/*从指定的块偏移处读取指定大小的数据*/
 extern int mfsr_device_ex(struct itemdata *,_co void *,size_t,foff_t,int);
-/*写入一个数据块*/
 extern int mfsw_device(struct itemdata *,const _ci void *,size_t);
-/*向指定块偏移处写入指定大小的数据*/
 extern int mfsw_device_ex(struct itemdata *,const _ci void *,size_t,foff_t,int);
-/*读取分区超级块信息*/
 extern int mfsr_superblk(struct itemdata *,struct mfs_super_blk *);
-/*写入分区超级块信息*/
 extern int mfsw_superblk(struct itemdata *,const struct mfs_super_blk *);
-/*分配一个cluster*/
-extern size_t mfs_alloc_cluster(struct itemdata *,struct mfs_super_blk *);
-/*释放一个cluster*/
+
+extern clust_t mfs_alloc_cluster(struct itemdata *,struct mfs_super_blk *);
 extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,size_t);
 
-/*在指定目录中创建一个非文件节点*/
+extern int mfs_allocfileinode_sct(struct itemdata *,size_t,_ci const char *);
+extern int mfs_freefileinode_sct(struct itemdata *,size_t,_ci const char *);
+extern int mfs_allocdevinode_sct(struct itemdata *,size_t,dev_t,_ci const char *);
+extern int mfs_freedevinode_sct(struct itemdata *,size_t,dev_t *,_ci const char *);
+extern int mfs_allocdirinode_sct(struct itemdata *,clust_t,size_t,_ci const char *);
+extern int mfs_freedirinode_sct(struct itemdata *,clust_t *,size_t,_ci const char *);
+extern int mfs_allocfileinode_clust(struct itemdata *,_ci const char *);
+extern int mfs_freefileinode_clust(struct itemdata *,_ci const char *);
+extern int mfs_allocdevinode_clust(struct itemdata *,dev_t,_ci const char *);
+extern int mfs_freedevinode_clust(struct itemdata *,dev_t *,_ci const char *);
+extern int mfs_allocdirinode_clust(struct itemdata *,clust_t,_ci const char *);
+extern int mfs_freedirinode_clust(struct itemdata *,clust_t *,_ci const char *);
+
+extern int mfs_checkitem_sct(struct itemdata *,struct itemattrib *,size_t,_ci const char *);
+extern int mfs_checkitem_clust(struct itemdata *,struct itemattrib *,_ci const char *);
+
 extern int mfs_do_mkinode(struct itemdata *,struct itemattrib *,_ci const char *);
-/*从指定的目录中删除一个非文件夹节点*/
 extern int mfs_do_rminode(struct itemdata *,_ci const char *);
-/*在指定目录中创建一个目录*/
 extern int mfs_do_mkdir(struct itemdata *,_co struct itemattrib *,_ci const char *);
-/*从指定目录中删除一个目录节点*/
 extern int mfs_do_rmdir(struct itemdata *,_ci const char *);
-/*检查目录中是否存在指定的节点*/
 extern int mfs_do_checkitem(struct itemdata *,_co struct itemattrib *,_ci const char *);
-/*检查簇中是否有指定节点*/
-extern int mfs_do_checkite_inclst(struct itemdata *,_co struct itemattrib *,clust_t,_ci const char *);
-/*检查指定的扇区中是否存在指定节点*/
-extern int mfs_do_checkitem_insct(struct itemdata *,_co struct itemattrib *,size_t,_ci const char *);
-/*更新一个节点的基本信息*/
 extern int mfs_do_updateitem(struct itemdata *,_ci struct itemattrib *,_ci const char *);
-/*打开一个非文件节点*/
 extern int mfs_do_openinode(struct itemdata *,_co struct itemdata *,_ci const char *);
-/*打开一个文件夹节点*/
 extern int mfs_do_opendir(struct itemdata *,_co struct itemdata *,_ci const char *);
-/*关闭一个非文件夹节点*/
 extern int mfs_do_closeinode(struct itemdata *,_ci struct itemdata *);
-/*关闭一个文件夹节点*/
 extern int mfs_do_closedir(struct itemdata *,_ci struct itemdata *);
 
 #endif /*_MFS_*/
