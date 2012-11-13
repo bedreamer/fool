@@ -133,28 +133,113 @@ extern int mfs_write(struct file *,_ui const char *,foff_t,_uo foff_t *,int);
 extern int mfs_kread(struct itemdata *,_co char *,foff_t,int);
 extern int mfs_kwrite(struct itemdata *,_ci const char *,foff_t,int);
 
-extern int mfs_mknode(struct dir *,struct itemattrib *,_ci const char *);
-extern int mfs_touch(struct dir *,_co struct itemattrib *,_ci const char *);
-extern int mfs_mkdir(struct dir *,_co struct itemattrib *,_ci const char *);
+extern int mfs_mknode(struct dir *pdir,struct itemattrib *pitm,_ci const char *nodename)
+{
+	if (NULL==pdir||NULL==pitm||NULL==nodename) return INVALID;
+	struct mfs_inode mp={{0}};
+	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
+	if (VALID==result) return INVALID;
+	mp.d_create = getdate();
+	mp.t_create = gettime();
+	mp.d_lastaccess = mp.d_create;
+	mp.t_lastaccess = mp.t_lastaccess;
+	mp.m_attrib = pitm->i_type;
+	mp.m_devnum = pitm->i_devnum;
+	mp.m_size = pitm->i_size;
+	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
+	if (INVALID==result) return INVALID;
+	if (NULL!=pitm)
+	{
+		pitm->d_create = mp.d_create;
+		pitm->d_lastaccess = mp.d_lastaccess;
+		pitm->i_devnum = mp.m_devnum;
+		pitm->i_size = mp.m_size;
+		pitm->i_type = mp.m_attrib;
+		pitm->t_create= mp.t_create;
+		pitm->t_lastaccess = mp.t_lastaccess;
+	}
+	return VALID;
+}
+
+/*创建新的文件节点*/
+int mfs_touch(struct dir *pdir,_co struct itemattrib *pitm,_ci const char * nodename)
+{
+	if (NULL==pdir||NULL==pitm||NULL==nodename) return INVALID;
+	struct mfs_inode mp={{0}};
+	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
+	if (VALID==result) return INVALID;
+	mp.d_create = getdate();
+	mp.t_create = gettime();
+	mp.d_lastaccess = mp.d_create;
+	mp.t_lastaccess = mp.t_lastaccess;
+	mp.m_attrib = ITYPE_ARCHIVE;
+	mp.m_devnum = 0;
+	mp.m_size = 0;
+	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
+	if (INVALID==result) return INVALID;
+	if (NULL!=pitm)
+	{
+		pitm->d_create = mp.d_create;
+		pitm->d_lastaccess = mp.d_lastaccess;
+		pitm->i_devnum = mp.m_devnum;
+		pitm->i_size = mp.m_size;
+		pitm->i_type = mp.m_attrib;
+		pitm->t_create= mp.t_create;
+		pitm->t_lastaccess = mp.t_lastaccess;
+	}
+	return VALID;
+}
+
+/*创建新的文件夹节点*/
+int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
+{
+	if (NULL==pdir||NULL==pitm||NULL==nodename) return INVALID;
+	struct mfs_inode mp={{0}};
+	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
+	if (VALID==result) return INVALID;
+	mp.d_create = getdate();
+	mp.t_create = gettime();
+	mp.d_lastaccess = mp.d_create;
+	mp.t_lastaccess = mp.t_lastaccess;
+	mp.m_attrib = ITYPE_DIR;
+	mp.m_devnum = 0;
+	mp.m_size = 0;
+	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
+	if (INVALID==result) return INVALID;
+	if (NULL!=pitm)
+	{
+		pitm->d_create = mp.d_create;
+		pitm->d_lastaccess = mp.d_lastaccess;
+		pitm->i_devnum = mp.m_devnum;
+		pitm->i_size = mp.m_size;
+		pitm->i_type = mp.m_attrib;
+		pitm->t_create= mp.t_create;
+		pitm->t_lastaccess = mp.t_lastaccess;
+	}
+	return VALID;
+}
+
 extern int mfs_rm   (struct dir *,_ci const char *);
 extern int mfs_rmdir(struct dir *,_ci const char *);
 extern int mfs_rename(struct dir *,struct itemattrib *,_ci const char *);
 extern int mfs_opendir(struct dir *,_co struct itemdata *,_ci const char *);
 extern int mfs_closedir(struct dir *,_ci struct itemdata *);
 extern int mfs_openinode(struct dir *,_co struct inode *,_ci const char *);
-
-/*关闭一个非文件节点.*/
-int mfs_closeinode(struct dir *pdir,_co struct inode *pin)
-{
-}
+extern int mfs_closeinode(struct dir *,_co struct inode *);
 
 /*读取指定位置的属性*/
 int mfs_readitem(struct dir *pdir,_co struct itemattrib *pitm,int index)
 {
-	if ( 0 >index) return INVALID;
+	if ( 0 >index || NULL==pitm) return INVALID;
 	struct mfs_inode mp={{0}};
 	int dd = index;
-	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,&dd);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem_ex,&dd);
 	if (VALID==result)
 	{
 		strncpy(pitm->i_name,mp.m_name,K_MAX_LEN_NODE_NAME);
@@ -176,7 +261,7 @@ int mfs_readattrib(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *
 	struct mfs_inode mp={{0}};
 
 	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
-	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
 	if (VALID==result)
 	{
 		strncpy(pitm->i_name,mp.m_name,K_MAX_LEN_NODE_NAME);
