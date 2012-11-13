@@ -30,6 +30,8 @@
 #define MFS_INODES_PER_SCT		8
 /*簇号转扇区号*/
 #define CLUSTER2SECT(clustnum) ((clustnum)*MFS_SCTS_PERCLUSTER)
+/*节点大小*/
+#define MFS_INODESIZE		sizeof(struct mfs_inode)
 
 /*MFS 节点信息 */
 #pragma pack(1)
@@ -132,6 +134,9 @@ extern int mfsw_device(struct itemdata *,const _ci void *,size_t);
 extern int mfsw_device_ex(struct itemdata *,const _ci void *,size_t,foff_t,int);
 extern int mfsr_superblk(struct itemdata *,struct mfs_super_blk *);
 extern int mfsw_superblk(struct itemdata *,const struct mfs_super_blk *);
+
+extern clust_t mfs_alloc_cluster(struct itemdata *,struct mfs_super_blk *);
+extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,clust_t);
 
 /* 对于常用的操作可能会频繁访问到目录中的每一个节点,分别对没一个操作进行节点的遍历比较复杂，因此直接采用
  * 回调函数来遍历目录中的所有节点,在这里回调可以完成节点查找，节点删除，增加节点，修改节点.
