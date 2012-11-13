@@ -128,6 +128,70 @@ int mfs_close(struct file *pf,struct inode *pi)
 	return VALID; /*总是关闭成功*/
 }
 
+extern int mfs_read(struct file *,_uo char *,foff_t,_uo foff_t *,int);
+extern int mfs_write(struct file *,_ui const char *,foff_t,_uo foff_t *,int);
+extern int mfs_kread(struct itemdata *,_co char *,foff_t,int);
+extern int mfs_kwrite(struct itemdata *,_ci const char *,foff_t,int);
+
+extern int mfs_mknode(struct dir *,struct itemattrib *,_ci const char *);
+extern int mfs_touch(struct dir *,_co struct itemattrib *,_ci const char *);
+extern int mfs_mkdir(struct dir *,_co struct itemattrib *,_ci const char *);
+extern int mfs_rm   (struct dir *,_ci const char *);
+extern int mfs_rmdir(struct dir *,_ci const char *);
+extern int mfs_rename(struct dir *,struct itemattrib *,_ci const char *);
+extern int mfs_opendir(struct dir *,_co struct itemdata *,_ci const char *);
+extern int mfs_closedir(struct dir *,_ci struct itemdata *);
+extern int mfs_openinode(struct dir *,_co struct inode *,_ci const char *);
+
+/*关闭一个非文件节点.*/
+int mfs_closeinode(struct dir *pdir,_co struct inode *pin)
+{
+}
+
+/*读取指定位置的属性*/
+int mfs_readitem(struct dir *pdir,_co struct itemattrib *pitm,int index)
+{
+	if ( 0 >index) return INVALID;
+	struct mfs_inode mp={{0}};
+	int dd = index;
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,&dd);
+	if (VALID==result)
+	{
+		strncpy(pitm->i_name,mp.m_name,K_MAX_LEN_NODE_NAME);
+		pitm->d_create = mp.d_create;
+		pitm->t_create = mp.t_create;
+		pitm->d_lastaccess = mp.d_lastaccess;
+		pitm->t_lastaccess = mp.t_lastaccess;
+		pitm->i_devnum = mp.m_devnum;
+		pitm->i_size = mp.m_size;
+		pitm->i_type = mp.m_attrib;
+		return VALID;
+	}
+	return INVALID;
+}
+
+/*读取节点属性*/
+int mfs_readattrib(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
+{
+	struct mfs_inode mp={{0}};
+
+	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
+	if (VALID==result)
+	{
+		strncpy(pitm->i_name,mp.m_name,K_MAX_LEN_NODE_NAME);
+		pitm->d_create = mp.d_create;
+		pitm->t_create = mp.t_create;
+		pitm->d_lastaccess = mp.d_lastaccess;
+		pitm->t_lastaccess = mp.t_lastaccess;
+		pitm->i_devnum = mp.m_devnum;
+		pitm->i_size = mp.m_size;
+		pitm->i_type = mp.m_attrib;
+		return VALID;
+	}
+	return INVALID;
+}
+
 /*--------------------------------------------------------------------------------------*/
 /*读取一个数据块*/
 int mfsr_device(struct itemdata *pdev,_co void *ptr,size_t sctnum)
@@ -192,7 +256,7 @@ int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 }
 
 /*遍历目录中的每一个节点直到回调函数要求退出或遍历完每个节点*/
-int mfs_foreachinode(struct itemdata *pdir,struct mfs_inode *pitm,mfs_ex_proc mfs_func)
+int mfs_function(struct itemdata *pdir,struct mfs_inode *pitm,mfs_ex_proc mfs_func,void *param)
 {
 	if (NULL==pdir||NULL==mfs_func||NULL==pitm) return INVALID;
 	if (ITYPE_DIR!=pdir->i_attrib.i_type) return INVALID;
@@ -209,12 +273,12 @@ int mfs_foreachinode(struct itemdata *pdir,struct mfs_inode *pitm,mfs_ex_proc mf
 		if (MFS_INVALID_CLUSTER==pc->i_fat[i]) return INVALID;
 		for (j=0;j<MFS_SCTS_PERCLUSTER;j++)
 		{
-			result = mfsr_device(pdev,mfs_buf,pc->i_fat[i]*MFS_SCTS_PERCLUSTER+j);
+			result = mfsr_device(pdev,mfs_buf,CLUSTER2SECT(pc->i_fat[i])+j);
 			if (INVALID==result) return INVALID;
 			for (k=0;k<MFS_INODES_PER_SCT;k++)
 			{
 				result = 
-				mfs_func(pdir,&mfs_buf[k],pitm,i*MFS_SCTS_PERCLUSTER*MFS_SCTS_PERCLUSTER+k);
+				mfs_func(pdir,&mfs_buf[k],pitm,i*MFS_SCTS_PERCLUSTER*MFS_SCTS_PERCLUSTER+k,param);
 				switch (result)
 				{
 					case MFS_RESULT_ABORT:			/*终止回调过程,回调函数失败,主函数返回*/
@@ -237,19 +301,8 @@ int mfs_foreachinode(struct itemdata *pdir,struct mfs_inode *pitm,mfs_ex_proc mf
 	return INVALID;
 }
 
-/*搜索目录中是否存在节点*/
-mfs_result mfs_ex_searchitem(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index)
-{
-	if (0==strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
-		return MFS_RESULT_CONTINUE;
-	if (0!=strncmp(pin->m_name,pim->m_name,K_MAX_LEN_NODE_NAME))
-		return MFS_RESULT_CONTINUE;
-	memcpy(pim,pin,sizeof(struct mfs_inode));
-	return MFS_RESULT_DONE;
-}
-
 /*在目录中创建节点*/
-mfs_result mfs_ex_mkmfsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index)
+mfs_result mfs_ex_mkmfsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index,void *param)
 {
 	if (0!=strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
 		return MFS_RESULT_CONTINUE;
@@ -258,7 +311,7 @@ mfs_result mfs_ex_mkmfsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_ci
 }
 
 /*从目录中删除节点*/
-mfs_result mfs_ex_rmmfsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index)
+mfs_result mfs_ex_rmmfsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index,void *param)
 {
 	if (0==strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
 		return MFS_RESULT_CONTINUE;
@@ -271,7 +324,36 @@ mfs_result mfs_ex_rmmfsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_ci
 	return MFS_RESULT_CONTINUE;
 }
 
-mfs_result mfs_ex_updatefsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index)
+/*搜索目录中是否存在节点*/
+mfs_result mfs_ex_searchitem(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index,void *param)
+{
+	if (0==strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
+		return MFS_RESULT_CONTINUE;
+	if (0!=strncmp(pin->m_name,pim->m_name,K_MAX_LEN_NODE_NAME))
+		return MFS_RESULT_CONTINUE;
+	memcpy(pim,pin,sizeof(struct mfs_inode));
+	return MFS_RESULT_DONE;
+}
+
+/*搜索目录中指定位置的节点*/
+mfs_result mfs_ex_searchitem_ex(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index,void *param)
+{
+	if (0==strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
+		return MFS_RESULT_CONTINUE;
+
+	int *p = (int *)param;
+	if (0 > *p) return MFS_RESULT_ABORT;
+	if (0==*p)
+	{
+		memcpy(pim,pin,sizeof(struct mfs_inode));
+		return MFS_RESULT_DONE;
+	}
+	(*p) --;
+	return MFS_RESULT_CONTINUE;
+}
+
+/*更新节点信息*/
+mfs_result mfs_ex_updatefsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index,void *param)
 {
 	if (0==strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
 		return MFS_RESULT_CONTINUE;
@@ -282,3 +364,7 @@ mfs_result mfs_ex_updatefsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,
 	}
 	return MFS_RESULT_CONTINUE;
 }
+
+
+
+

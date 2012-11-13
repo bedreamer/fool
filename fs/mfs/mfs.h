@@ -28,16 +28,18 @@
 #define MFS_INVALID_CLUSTER		0
 /*每个扇区可以有几个inode*/
 #define MFS_INODES_PER_SCT		8
+/*簇号转扇区号*/
+#define CLUSTER2SECT(clustnum) ((clustnum)*MFS_SCTS_PERCLUSTER)
 
 /*MFS 节点信息 */
 #pragma pack(1)
 struct mfs_inode 
 {
-	unsigned char m_name[K_MAX_LEN_NODE_NAME];	//14 bytes
-	unsigned char m_unused[2];					// 2 bytes
-	size_t m_size;								// 4 bytes
-	unsigned int m_attrib;						// 4 bytes
-	unsigned int m_devnum;						// 4 bytes
+	char m_name[K_MAX_LEN_NODE_NAME];	//14 bytes
+	unsigned char m_unused[2];			// 2 bytes
+	size_t m_size;						// 4 bytes
+	unsigned int m_attrib;				// 4 bytes
+	unsigned int m_devnum;				// 4 bytes
 
 	time_t t_create;							// 4 bytes
 	date_t d_create;							// 4 bytes
@@ -105,6 +107,24 @@ extern int mfs_umount(struct inode *,void **);
 
 extern int mfs_open(struct file *,struct inode *);
 extern int mfs_close(struct file *,struct inode *);
+extern int mfs_read(struct file *,_uo char *,foff_t,_uo foff_t *,int);
+extern int mfs_write(struct file *,_ui const char *,foff_t,_uo foff_t *,int);
+extern int mfs_ioctl(struct file *,int,int);
+extern int mfs_kread(struct itemdata *,_co char *,foff_t,int);
+extern int mfs_kwrite(struct itemdata *,_ci const char *,foff_t,int);
+
+extern int mfs_mknode(struct dir *,struct itemattrib *,_ci const char *);
+extern int mfs_touch(struct dir *,_co struct itemattrib *,_ci const char *);
+extern int mfs_mkdir(struct dir *,_co struct itemattrib *,_ci const char *);
+extern int mfs_rm   (struct dir *,_ci const char *);
+extern int mfs_rmdir(struct dir *,_ci const char *);
+extern int mfs_rename(struct dir *,struct itemattrib *,_ci const char *);
+extern int mfs_opendir(struct dir *,_co struct itemdata *,_ci const char *);
+extern int mfs_closedir(struct dir *,struct itemdata *);
+extern int mfs_openinode(struct dir *,_co struct inode *,_ci const char *);
+extern int mfs_closeinode(struct dir *,_co struct inode *);
+extern int mfs_readitem(struct dir *,_co struct itemattrib *,int);
+extern int mfs_readattrib(struct dir *,_co struct itemattrib *,_ci const char *);
 
 extern int mfsr_device(struct itemdata *,_co void *,size_t);
 extern int mfsr_device_ex(struct itemdata *,_co void *,size_t,foff_t,int);
@@ -113,22 +133,26 @@ extern int mfsw_device_ex(struct itemdata *,const _ci void *,size_t,foff_t,int);
 extern int mfsr_superblk(struct itemdata *,struct mfs_super_blk *);
 extern int mfsw_superblk(struct itemdata *,const struct mfs_super_blk *);
 
-extern clust_t mfs_alloc_cluster(struct itemdata *,struct mfs_super_blk *);
-extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,clust_t);
-
-/* 读写接口不统一，并且可能会频繁访问到目录中的每一个节点,直接使用回调函数来遍历目录中的所有节点 
- * 在这里回调可以完成节点查找，节点删除，增加节点，修改节点.
- * .NOTE 在进行回调前必须对传入的itemattrib中的i_name字段进行初始化，其他属性需要根据执行的需求进行
- * 初始化.
+/* 对于常用的操作可能会频繁访问到目录中的每一个节点,分别对没一个操作进行节点的遍历比较复杂，因此直接采用
+ * 回调函数来遍历目录中的所有节点,在这里回调可以完成节点查找，节点删除，增加节点，修改节点.
+ * .NOTE 1 在进行回调前必须对传入的itemattrib中的i_name字段进行初始化，其他属性需要根据执行的需求进行初始化.
+ * .NOTE 2 只能通过上面提供的接口来间接使用如下的除mfs_foreachinode以外的方法.
+ * .NOTE 3 如果使用如下的接口进行创建操作，则需要提前检查目录中是否存在相同名称的节点.
  */
-typedef mfs_result int;
-#define MFS_RESULT_ABORT	   -1	/*终止回调过程,回调函数失败,主函数返回*/
-#define MFS_RESULT_DONE			1	/*终止回调过程,回调函数成功,主函数返回*/
-#define MFS_RESULT_CONTINUE		2	/*继续执行回调*/
-#define MFS_RESULT_WRITEBACK	3	/*将回调后的结果写回设备*/
-typedef mfs_result (*mfs_proc)(struct itemdata *,_ci struct mfs_inode *,_cio struct itemattrib *,int);
-extern int mfs_foreachinode(struct itemdata *,struct itemattrib *,mfs_proc);
-extern mfs_result mfs_do_search(struct itemdata *,_ci struct mfs_inode *,_cio struct itemattrib *,int);
+typedef int mfs_result;
+#define MFS_RESULT_ABORT        -1	/*终止回调过程,回调函数失败,主函数返回*/
+#define MFS_RESULT_DONE          1	/*终止回调过程,回调函数成功,主函数返回*/
+#define MFS_RESULT_CONTINUE      2	/*继续执行回调*/
+#define MFS_RESULT_WRITEBACK     3	/*将回调后的结果写回设备,后主函数返回*/
+#define MFS_RESULT_WRITEBACK_EX	4	/*将回调后的结果写回设备,后主函数继续执行*/
+typedef mfs_result (*mfs_ex_proc)(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
+extern int mfs_function(struct itemdata *,struct mfs_inode *,mfs_ex_proc,void *);
+
+extern mfs_result mfs_ex_mkmfsinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
+extern mfs_result mfs_ex_rmmfsinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
+extern mfs_result mfs_ex_searchitem(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
+extern mfs_result mfs_ex_searchitem_ex(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
+extern mfs_result mfs_ex_updatefsinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
 
 #endif /*_MFS_*/
 
