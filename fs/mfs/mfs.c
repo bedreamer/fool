@@ -267,6 +267,38 @@ int mfs_touch(struct dir *pdir,_co struct itemattrib *pitm,_ci const char * node
 /*创建新的文件夹节点*/
 int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
 {
+	if (NULL==pdir||NULL==nodename) return INVALID;
+	struct mfs_func_param_io mp={{{0}}};
+
+	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
+
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem);
+	if (INVALID==result)
+	{
+		struct itemdata *pdev = &(pdir->d_data.i_root->mnt_root.d_data);
+		struct mfs_super_blk *sblk = ((struct mfs_core*)(pdir->d_data.i_private))->m_super;
+
+		clust_t cld = mfs_alloc_cluster(pdev,sblk);
+
+		if (MFS_INVALID_CLUSTER==cld) return INVALID;
+
+		mp.m_pmi.i_fat[0] = cld;
+		mp.m_pmi.m_attrib = ITYPE_DIR;
+
+		result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode);
+		if (INVALID==result) goto faile;
+		return VALID;
+faile:
+		mfs_free_cluster(pdev,sblk,cld);
+		return INVALID;
+	}
+	if (ITYPE_DIR==mp.m_pmi.m_attrib){
+		if (pitm){
+			memcpy(pitm->i_name,mp.m_pmi.m_name,K_MAX_LEN_NODE_NAME);
+			load_inode_into_attrib(pitm,&(mp.m_pmi));
+		}
+		return VALID;
+	}
 	return INVALID;
 }
 
@@ -424,7 +456,8 @@ int mfs_function(struct itemdata *pdir,_cio struct mfs_func_param_io *pio,mfs_ex
 
 	int i,j,k,result;
 
-	for (i=0;i<MFS_FAT_CNT;i++)
+	/*这里暂时使用一个簇表示一个目录*/
+	for (i=0;i<MFS_DIR_FAT_CNT;i++)
 	{
 		mfs_param.m_clust = pc->i_fat[i];
 		if (MFS_INVALID_CLUSTER==pc->i_fat[i]) return INVALID;

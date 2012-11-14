@@ -13,8 +13,12 @@
 #define MFS_ID						0x90
 /*所需最小硬盘分区大小（100M）*/
 #define MFS_NEED_MIN_SCTS			0x00032000
-/*文件分配表个数*/
+/*簇表个数*/
 #define MFS_FAT_CNT					5
+/*文件簇分配表个数*/
+#define MFS_FILE_FAT_CNT				MFS_FAT_CNT
+/*目录簇表个数*/
+#define MFS_DIR_FAT_CNT				1
 /*超级块所在块号*/
 #define MFS_SBLK_SCTNUM				1
 /*MFS 文件系统魔数,'MFS_'*/
@@ -36,7 +40,7 @@
 /*支持的最大文件大小*/
 #define MFS_MAX_FILE_SIZE			(0x01001000)
 /*每个目录支持的最大节点数目*/
-#define MFS_MAX_INODE_CNT_PERDIR		(320)
+#define MFS_MAX_INODE_CNT_PERDIR		(64)
 
 struct mfs_func_param_io;
 
