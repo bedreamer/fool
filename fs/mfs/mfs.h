@@ -8,6 +8,7 @@
 
 #include <kernel/kernel.h>
 #include <kernel/kmodel.h>
+#include <kernel/mm.h>
 
 #define MFS_ID					0x90
 /*所需最小硬盘分区大小（100M）*/
@@ -19,7 +20,7 @@
 /*MFS 文件系统魔数,'MFS_'*/
 #define MFS_MAGIC				0x5F53464D
 /*簇大小固定为4K*/
-#define MFS_CLUSTER_SIZE		4096
+#define MFS_CLUSTER_SIZE			4096
 /*每个簇包含的扇区数为8*/
 #define MFS_SCTS_PERCLUSTER		8
 /*CMap起始簇号常为1*/
@@ -29,9 +30,13 @@
 /*每个扇区可以有几个inode*/
 #define MFS_INODES_PER_SCT		8
 /*簇号转扇区号*/
-#define CLUSTER2SECT(clustnum) ((clustnum)*MFS_SCTS_PERCLUSTER)
+#define CLUSTER2SECT(clustnum) 		((clustnum)*MFS_SCTS_PERCLUSTER)
 /*节点大小*/
-#define MFS_INODESIZE		sizeof(struct mfs_inode)
+#define MFS_INODESIZE				sizeof(struct mfs_inode)
+/*支持的最大文件大小*/
+#define MFS_MAX_FILE_SIZE			(0x01001000)
+/*每个目录支持的最大节点数目*/
+#define MFS_MAX_INODE_CNT_PERDIR		(320)
 
 /*MFS 节点信息 */
 #pragma pack(1)
@@ -43,11 +48,11 @@ struct mfs_inode
 	unsigned int m_attrib;				// 4 bytes
 	unsigned int m_devnum;				// 4 bytes
 
-	time_t t_create;							// 4 bytes
-	date_t d_create;							// 4 bytes
-	time_t t_lastaccess;						// 4 bytes
-	date_t d_lastaccess;						// 4 bytes
-	clust_t i_fat[MFS_FAT_CNT];					//20 bytes
+	time_t t_create;					// 4 bytes
+	date_t d_create;					// 4 bytes
+	time_t t_lastaccess;				// 4 bytes
+	date_t d_lastaccess;				// 4 bytes
+	clust_t i_fat[MFS_FAT_CNT];		//20 bytes
 	/* 作为文件时
 	 * i_fat[0] --> 一级指针直接指向数据块 1 * 4K = 4K
 	 * i_fat[1-4] --> 二级指针指向fat表 4 * 4M = 16M
@@ -138,9 +143,10 @@ extern int mfsw_superblk(struct itemdata *,const struct mfs_super_blk *);
 extern clust_t mfs_alloc_cluster(struct itemdata *,struct mfs_super_blk *);
 extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,clust_t);
 
-/* 对于常用的操作可能会频繁访问到目录中的每一个节点,分别对没一个操作进行节点的遍历比较复杂，因此直接采用
- * 回调函数来遍历目录中的所有节点,在这里回调可以完成节点查找，节点删除，增加节点，修改节点.
- * .NOTE 1 在进行回调前必须对传入的itemattrib中的i_name字段进行初始化，其他属性需要根据执行的需求进行初始化.
+/* 下面的方法用来解决对inode的访问复杂的过程
+ * 对于常用的操作可能会频繁访问到目录中的每一个节点,分别对没一个操作进行节点的遍历比较复杂，因此直接采用
+ * 回调函数来遍历目录中的所有节点.在这里回调可以完成节点查找，节点删除，增加节点，修改节点.
+ * .NOTE 1 在进行回调前可能需要对传入的itemattrib中的i_name字段进行初始化，其他属性需要根据执行的需求进行初始化.
  * .NOTE 2 只能通过上面提供的接口来间接使用如下的除mfs_foreachinode以外的方法.
  * .NOTE 3 如果使用如下的接口进行创建操作，则需要提前检查目录中是否存在相同名称的节点.
  */
@@ -149,7 +155,7 @@ typedef int mfs_result;
 #define MFS_RESULT_DONE          1	/*终止回调过程,回调函数成功,主函数返回*/
 #define MFS_RESULT_CONTINUE      2	/*继续执行回调*/
 #define MFS_RESULT_WRITEBACK     3	/*将回调后的结果写回设备,后主函数返回*/
-#define MFS_RESULT_WRITEBACK_EX	4	/*将回调后的结果写回设备,后主函数继续执行*/
+#define MFS_RESULT_WRITEBACK_EX  4 /*将回调后的结果写回设备,后主函数继续执行*/
 typedef mfs_result (*mfs_ex_proc)(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
 extern int mfs_function(struct itemdata *,struct mfs_inode *,mfs_ex_proc,void *);
 

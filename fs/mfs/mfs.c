@@ -57,7 +57,7 @@ int mfs_mount(struct inode *pi,struct itemdata *proot,void ** mntprivate)
 	spinlock_init(psblk->lck_cmap);	/*必须要初始化这个成员*/
 
 	* mntprivate = psblk;
-	
+
 	struct mfs_core *pc = cmfs_cache_alloc();
 	if (NULL==pc) goto faile;
 
@@ -76,11 +76,13 @@ faile:
 int mfs_umount(struct inode *pi,void **private)
 {
 	if (NULL==pi||NULL==private) return INVALID;
-
 	struct mfs_super_blk *psblk = *((struct mfs_super_blk**)private);
 	if (MFS_MAGIC!=psblk->mfs_magic) return INVALID;
+	if (NULL==pi->i_data.i_private) return INVALID;
 
 	kfree(psblk);
+	cmfs_cache_free((struct mfs_core*)(pi->i_data.i_private));
+
 	return VALID;
 }
 
@@ -142,11 +144,10 @@ int mfs_mkfs(struct inode *pi,const char *lable)
 	mp.m_devnum = 0;
 	mp.m_size = 0;
 	mp.i_fat[0] = msb.clst_root;
+
 	strncpy(mp.m_name,".",K_MAX_LEN_NODE_NAME);
 	mfsw_device_ex(&(pi->i_data),&mp,CLUSTER2SECT(msb.clst_root),0,MFS_INODESIZE);
-
 	strncpy(mp.m_name,"..",K_MAX_LEN_NODE_NAME);
-	mp.i_fat[0] = msb.clst_root;
 	mfsw_device_ex(&(pi->i_data),&mp,CLUSTER2SECT(msb.clst_root),MFS_INODESIZE,MFS_INODESIZE);
 
 	return mfsw_superblk(&(pi->i_data),&msb);
@@ -164,12 +165,60 @@ int mfs_close(struct file *pf,struct inode *pi)
 	return VALID; /*总是关闭成功*/
 }
 
-extern int mfs_read(struct file *,_uo char *,foff_t,_uo foff_t *,int);
-extern int mfs_write(struct file *,_ui const char *,foff_t,_uo foff_t *,int);
-extern int mfs_kread(struct itemdata *,_co char *,foff_t,int);
-extern int mfs_kwrite(struct itemdata *,_ci const char *,foff_t,int);
+/*读取文件*/
+int mfs_read(struct file *fp,_uo char *uptr,foff_t offset,_uo foff_t *poffset,int cnt)
+{
+	struct mfs_core *pc;
+	struct itemattrib *pattrib;
+	struct itemdata *pdev;
 
-extern int mfs_mknode(struct dir *pdir,struct itemattrib *pitm,_ci const char *nodename)
+	pc = (struct mfs_core*)(fp->f_pi->i_data.i_private);
+	pattrib = &(fp->f_pi->i_data.i_attrib);
+	pdev = &(fp->f_pi->i_data.i_root->mnt_root.d_data);
+
+	if (offset>=pattrib->i_size)
+	{
+		if (*poffset) *poffset = EOF;
+		return INVALID;
+	}
+
+	return VALID;
+}
+
+/*写文件*/
+int mfs_write(struct file *fp,_ui const char *uptr,foff_t offset,_uo foff_t *poffset,int cnt)
+{
+	struct mfs_core *pc;
+	struct itemattrib *pattrib;
+	struct itemdata *pdev;
+
+	pc = (struct mfs_core*)(fp->f_pi->i_data.i_private);
+	pattrib = &(fp->f_pi->i_data.i_attrib);
+	pdev = &(fp->f_pi->i_data.i_root->mnt_root.d_data);
+
+	if (offset > pattrib->i_size)
+	{
+		if (*poffset) *poffset = EOF;
+		return INVALID;
+	}
+
+	return VALID;
+}
+
+/*将文件内容读入内核空间*/
+int mfs_kread(struct itemdata *pitd,_co char *cptr,foff_t offset,int cnt)
+{
+	return INVALID;
+}
+
+/*将内核空间的数据写入文件*/
+int mfs_kwrite(struct itemdata *pitd,_ci const char *cptr,foff_t offset,int cnt)
+{
+	return INVALID;
+}
+
+/*在文件系统中创建节点*/
+int mfs_mknode(struct dir *pdir,struct itemattrib *pitm,_ci const char *nodename)
 {
 	if (NULL==pdir||NULL==pitm||NULL==nodename) return INVALID;
 	struct mfs_inode mp={{0}};
@@ -204,9 +253,11 @@ int mfs_touch(struct dir *pdir,_co struct itemattrib *pitm,_ci const char * node
 {
 	if (NULL==pdir||NULL==pitm||NULL==nodename) return INVALID;
 	struct mfs_inode mp={{0}};
+
 	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
 	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
 	if (VALID==result) return INVALID;
+
 	mp.d_create = getdate();
 	mp.t_create = gettime();
 	mp.d_lastaccess = mp.d_create;
@@ -250,7 +301,7 @@ int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *noden
 	mp.m_attrib = ITYPE_DIR;
 	mp.m_devnum = 0;
 	mp.m_size = 0;
-	
+
 	pdev = &(pdir->d_data.i_root->mnt_dev->i_data);
 	sblk = ((struct mfs_core*)(pdir->d_data.i_private))->m_super;
 	pc = (struct mfs_core*)(pdir->d_data.i_private);
@@ -290,13 +341,55 @@ faile:
 	return INVALID;
 }
 
-extern int mfs_rm   (struct dir *,_ci const char *);
-extern int mfs_rmdir(struct dir *,_ci const char *);
-extern int mfs_rename(struct dir *,struct itemattrib *,_ci const char *);
-extern int mfs_opendir(struct dir *,_co struct itemdata *,_ci const char *);
-extern int mfs_closedir(struct dir *,_ci struct itemdata *);
-extern int mfs_openinode(struct dir *,_co struct inode *,_ci const char *);
-extern int mfs_closeinode(struct dir *,_co struct inode *);
+/*删除一个非文件夹节点*/
+int mfs_rm(struct dir *pdir,_ci const char *nodename)
+{
+	struct mfs_inode mp={{0}}; int i;
+	struct itemdata *pdev;
+	struct mfs_super_blk *psblk;
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_rmmfsinode,NULL);
+	if (INVALID) return INVALID;
+
+	pdev = &(pdir->d_data.i_root->mnt_dev->i_data);
+	psblk = ((struct mfs_core*)(pdir->d_data.i_private))->m_super;
+
+	for (i=0;i<MFS_FAT_CNT;i++)
+	{
+		if (MFS_INVALID_CLUSTER!=mp.i_fat[i])
+			mfs_free_cluster(pdev,psblk,mp.i_fat[i]);
+	}
+	return VALID;
+}
+
+int mfs_rmdir(struct dir *pdir,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+int mfs_rename(struct dir *pdir,struct itemattrib *pitm,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+int mfs_opendir(struct dir *pdir,_co struct itemdata *pitd,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+int mfs_closedir(struct dir *pdir,_ci struct itemdata *pitd)
+{
+	return INVALID;
+}
+
+int mfs_openinode(struct dir *pdir,_co struct inode *pin,_ci const char *nodename)
+{
+	return INVALID;
+}
+
+int mfs_closeinode(struct dir *pdir,_co struct inode *pin)
+{
+	return INVALID;
+}
 
 /*读取指定位置的属性*/
 int mfs_readitem(struct dir *pdir,_co struct itemattrib *pitm,int index)
