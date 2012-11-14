@@ -168,40 +168,12 @@ int mfs_close(struct file *pf,struct inode *pi)
 /*读取文件*/
 int mfs_read(struct file *fp,_uo char *uptr,foff_t offset,_uo foff_t *poffset,int cnt)
 {
-	struct mfs_core *pc;
-	struct itemattrib *pattrib;
-	struct itemdata *pdev;
-
-	pc = (struct mfs_core*)(fp->f_pi->i_data.i_private);
-	pattrib = &(fp->f_pi->i_data.i_attrib);
-	pdev = &(fp->f_pi->i_data.i_root->mnt_root.d_data);
-
-	if (offset>=pattrib->i_size)
-	{
-		if (*poffset) *poffset = EOF;
-		return INVALID;
-	}
-
 	return VALID;
 }
 
 /*写文件*/
 int mfs_write(struct file *fp,_ui const char *uptr,foff_t offset,_uo foff_t *poffset,int cnt)
 {
-	struct mfs_core *pc;
-	struct itemattrib *pattrib;
-	struct itemdata *pdev;
-
-	pc = (struct mfs_core*)(fp->f_pi->i_data.i_private);
-	pattrib = &(fp->f_pi->i_data.i_attrib);
-	pdev = &(fp->f_pi->i_data.i_root->mnt_root.d_data);
-
-	if (offset > pattrib->i_size)
-	{
-		if (*poffset) *poffset = EOF;
-		return INVALID;
-	}
-
 	return VALID;
 }
 
@@ -217,156 +189,91 @@ int mfs_kwrite(struct itemdata *pitd,_ci const char *cptr,foff_t offset,int cnt)
 	return INVALID;
 }
 
+/*将itemattrimb中的通用数据转换为mfs_inode,不转换节点名*/
+static inline void load_attrib_into_inode(struct mfs_inode * pi,const struct itemattrib * pitm)
+{
+	pi->d_create = pitm->d_create; pi->d_lastaccess = pitm->d_lastaccess;
+	pi->m_attrib = pitm->i_type;   pi->m_devnum = pitm->i_devnum;
+	pi->m_size = pitm->i_size;     pi->t_lastaccess = pitm->t_lastaccess;
+	pi->t_create = pitm->t_create;
+}
+
+/*将mfs_inode转换为itemattrimb中的通用数据,不转换节点名*/
+static inline void load_inode_into_attrib(struct itemattrib * pitm,const struct mfs_inode * pi)
+{
+	 pitm->d_create = pi->d_create;  pitm->d_lastaccess = pi->d_lastaccess;
+	 pitm->i_type = pi->m_attrib;    pitm->i_devnum = pi->m_devnum;
+	 pitm->i_size = pi->m_size;      pitm->t_lastaccess = pi->t_lastaccess;
+	 pitm->t_create =pi->t_create;
+}
+
 /*创建节点,仅在这里修改节点的时间属性
  */
-int mfs_makeinode(struct dir *,struct mfs_func_param_io *ppio)
+int mfs_makeinode(struct itemdata *pdir,struct mfs_func_param_io *ppio)
 {
 	ppio->m_pmi.d_create = getdate();
 	ppio->m_pmi.t_create = gettime();
 	ppio->m_pmi.d_lastaccess = ppio->m_pmi.d_create;
 	ppio->m_pmi.t_lastaccess = ppio->m_pmi.t_lastaccess;
-	return mfs_function(dir,ppio,mfs_ex_mkmfsinode);
+	return mfs_function(pdir,ppio,mfs_ex_mkmfsinode);
 }
 
 /*在文件系统中创建设备节点*/
 int mfs_mknode(struct dir *pdir,struct itemattrib *pitm,_ci const char *nodename)
 {
-	if (NULL==pdir||NULL==pitm||NULL==nodename) return INVALID;
-	struct mfs_inode mp={{0}};
-	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
-	if (VALID==result) return INVALID;
+	if (NULL==pitm) return INVALID;
+	struct mfs_func_param_io mp={{{0}}};
 
-	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
-	mp.m_attrib = pitm->i_type;
-	mp.m_devnum = pitm->i_devnum;
-	mp.m_size = pitm->i_size;
-	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
-	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
-	if (INVALID==result) return INVALID;
-	if (NULL!=pitm)
+	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
+
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem);
+	if (INVALID==result)
 	{
-		pitm->d_create = mp.d_create;
-		pitm->d_lastaccess = mp.d_lastaccess;
-		pitm->i_devnum = mp.m_devnum;
-		pitm->i_size = mp.m_size;
-		pitm->i_type = mp.m_attrib;
-		pitm->t_create= mp.t_create;
-		pitm->t_lastaccess = mp.t_lastaccess;
+		if (!(ITYPE_DEVICE&mp.m_pmi.m_attrib)) return INVALID;
+		load_attrib_into_inode(&(mp.m_pmi),pitm);
+		return mfs_makeinode(&(pdir->d_data),&mp);
 	}
-	return VALID;
+	if (ITYPE_DEVICE&mp.m_pmi.m_attrib)
+	{
+		if (mp.m_pmi.m_attrib==pitm->i_devnum) return VALID;
+		else return INVALID;
+	}
+	return INVALID;
 }
 
 /*创建新的文件节点*/
 int mfs_touch(struct dir *pdir,_co struct itemattrib *pitm,_ci const char * nodename)
 {
-	if (NULL==pdir||NULL==pitm||NULL==nodename) return INVALID;
-	struct mfs_inode mp={{0}};
+	if (NULL==pdir||NULL==nodename) return INVALID;
+	struct mfs_func_param_io mp={{{0}}};
+	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
 
-	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
-	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
-	if (VALID==result) return INVALID;
-
-	mp.d_create = getdate();
-	mp.t_create = gettime();
-	mp.d_lastaccess = mp.d_create;
-	mp.t_lastaccess = mp.t_lastaccess;
-	mp.m_attrib = ITYPE_ARCHIVE;
-	mp.m_devnum = 0;
-	mp.m_size = 0;
-	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
-	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
-	if (INVALID==result) return INVALID;
-	if (NULL!=pitm)
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem);
+	if (INVALID==result)
 	{
-		pitm->d_create = mp.d_create;
-		pitm->d_lastaccess = mp.d_lastaccess;
-		pitm->i_devnum = mp.m_devnum;
-		pitm->i_size = mp.m_size;
-		pitm->i_type = mp.m_attrib;
-		pitm->t_create= mp.t_create;
-		pitm->t_lastaccess = mp.t_lastaccess;
+		mp.m_pmi.m_attrib = ITYPE_ARCHIVE;
+		return mfs_makeinode(&(pdir->d_data),&mp);
 	}
-	return VALID;
+	if (ITYPE_ARCHIVE==mp.m_pmi.m_attrib){
+		if (pitm){
+			memcpy(pitm->i_name,mp.m_pmi.m_name,K_MAX_LEN_NODE_NAME);
+			load_inode_into_attrib(pitm,&(mp.m_pmi));
+		}
+		return VALID;
+	}
+	return INVALID;
 }
 
 /*创建新的文件夹节点*/
 int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
 {
-	if (NULL==pdir||NULL==pitm||NULL==nodename) return INVALID;
-	struct mfs_inode mp={{0}};
-	struct itemdata *pdev;
-	struct mfs_super_blk *sblk;
-	struct mfs_core *pc;
-
-	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
-	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
-	if (VALID==result) return INVALID;
-
-	mp.d_create = getdate();
-	mp.t_create = gettime();
-	mp.d_lastaccess = mp.d_create;
-	mp.t_lastaccess = mp.t_lastaccess;
-	mp.m_attrib = ITYPE_DIR;
-	mp.m_devnum = 0;
-	mp.m_size = 0;
-
-	pdev = &(pdir->d_data.i_root->mnt_dev->i_data);
-	sblk = ((struct mfs_core*)(pdir->d_data.i_private))->m_super;
-	pc = (struct mfs_core*)(pdir->d_data.i_private);
-
-	clust_t cluster = mfs_alloc_cluster(pdev,sblk);
-
-	mp.i_fat[0] = cluster;
-
-	if (MFS_INVALID_CLUSTER==mp.i_fat[0]) return INVALID;
-	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
-	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
-	if (INVALID==result) goto faile;
-	if (NULL!=pitm)
-	{
-		pitm->d_create = mp.d_create;
-		pitm->d_lastaccess = mp.d_lastaccess;
-		pitm->i_devnum = mp.m_devnum;
-		pitm->i_size = mp.m_size;
-		pitm->i_type = mp.m_attrib;
-		pitm->t_create= mp.t_create;
-		pitm->t_lastaccess = mp.t_lastaccess;
-	}
-
-	strncpy(mp.m_name,".",K_MAX_LEN_NODE_NAME);
-	mp.i_fat[0] = cluster;
-	mp.m_attrib = ITYPE_DIR;
-	mfsw_device_ex(pdev,&mp,CLUSTER2SECT(cluster),0,MFS_INODESIZE);
-
-	strncpy(mp.m_name,"..",K_MAX_LEN_NODE_NAME);
-	mp.i_fat[0] = pc->m_cluster;
-	mp.m_attrib = ITYPE_DIR;
-	mfsw_device_ex(pdev,&mp,CLUSTER2SECT(cluster),MFS_INODESIZE,MFS_INODESIZE);
-
-	return VALID;
-faile:
-	mfs_free_cluster(pdev,sblk,cluster);
 	return INVALID;
 }
 
 /*删除一个非文件夹节点*/
 int mfs_rm(struct dir *pdir,_ci const char *nodename)
 {
-	struct mfs_inode mp={{0}}; int i;
-	struct itemdata *pdev;
-	struct mfs_super_blk *psblk;
-	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_rmmfsinode,NULL);
-	if (INVALID) return INVALID;
-
-	pdev = &(pdir->d_data.i_root->mnt_dev->i_data);
-	psblk = ((struct mfs_core*)(pdir->d_data.i_private))->m_super;
-
-	for (i=0;i<MFS_FAT_CNT;i++)
-	{
-		if (MFS_INVALID_CLUSTER!=mp.i_fat[i])
-			mfs_free_cluster(pdev,psblk,mp.i_fat[i]);
-	}
-	return VALID;
+	return INVALID;
 }
 
 /*删除目录*/
@@ -396,23 +303,6 @@ int mfs_closedir(struct dir *pdir,_ci struct itemdata *pitd)
 /*打开文件节点*/
 int mfs_openinode(struct dir *pdir,_co struct inode *pin,_ci const char *nodename)
 {
-	struct mfs_inode mp={{0}};
-	int index=0;
-
-	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
-	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,&index);
-	if (VALID==result)
-	{
-		if (ITYPE_ARCHIVE!=mp.m_attrib) return INVALID;
-
-		struct mfs_core *pc = cmfs_cache_alloc();
-		if (NULL==pc) return INVALID;
-
-		memcpy(pc->i_fat,mp.i_fat,sizeof(clust_t)*MFS_FAT_CNT);
-		spinlock_init(pc->lck_i_fat);
-
-		return VALID;
-	}
 	return INVALID;
 }
 
@@ -425,43 +315,21 @@ int mfs_closeinode(struct dir *pdir,_co struct inode *pin)
 /*读取指定位置的属性*/
 int mfs_readitem(struct dir *pdir,_co struct itemattrib *pitm,int index)
 {
-	if ( 0 >index || NULL==pitm) return INVALID;
-	struct mfs_inode mp={{0}};
-	int dd = index;
-	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem_ex,&dd);
-	if (VALID==result)
-	{
-		strncpy(pitm->i_name,mp.m_name,K_MAX_LEN_NODE_NAME);
-		pitm->d_create = mp.d_create;
-		pitm->t_create = mp.t_create;
-		pitm->d_lastaccess = mp.d_lastaccess;
-		pitm->t_lastaccess = mp.t_lastaccess;
-		pitm->i_devnum = mp.m_devnum;
-		pitm->i_size = mp.m_size;
-		pitm->i_type = mp.m_attrib;
-		return VALID;
-	}
 	return INVALID;
 }
 
 /*读取节点属性*/
 int mfs_readattrib(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *nodename)
 {
-	struct mfs_func_param_io mp;
+	if (NULL==pitm) return INVALID;
+	struct mfs_func_param_io mp={{{0}}};
 
-	memset(&mp,0,sizeof(struct mfs_func_param_io));
 	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
-	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,NULL);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem);
 	if (VALID==result)
 	{
-		strncpy(pitm->i_name,mp.m_pmi.m_name,K_MAX_LEN_NODE_NAME);
-		pitm->d_create = mp.m_pmi.d_create;
-		pitm->t_create = mp.m_pmi.t_create;
-		pitm->d_lastaccess = mp.m_pmi.d_lastaccess;
-		pitm->t_lastaccess = mp.m_pmi.t_lastaccess;
-		pitm->i_devnum = mp.m_pmi.m_devnum;
-		pitm->i_size = mp.m_pmi.m_size;
-		pitm->i_type = mp.m_pmi.m_attrib;
+		memcpy(pitm->i_name,mp.m_pmi.m_name,K_MAX_LEN_NODE_NAME);
+		load_inode_into_attrib(pitm,&(mp.m_pmi));
 		return VALID;
 	}
 	return INVALID;
@@ -627,7 +495,7 @@ mfs_result mfs_ex_searchitem(struct itemdata *pdir,_ci struct mfs_func_param_in 
 		return MFS_RESULT_CONTINUE;
 
 	ppio->m_clust = pio->m_clust;
-	memcpy(&(ppio.m_pmi),pio->m_pmi,sizeof(struct mfs_inode));
+	memcpy(&(ppio->m_pmi),pio->m_pmi,sizeof(struct mfs_inode));
 	return MFS_RESULT_DONE;
 }
 
@@ -636,12 +504,13 @@ mfs_result mfs_ex_searchitem_ex(struct itemdata *pdir,_ci struct mfs_func_param_
 {
 	if (0==strnlen(pio->m_pmi->m_name,K_MAX_LEN_NODE_NAME))
 		return MFS_RESULT_CONTINUE;
-	if (0==ppio->m_index)
+	if (0==ppio->exparam.m_index)
 	{
+		ppio->m_clust = pio->m_clust;
 		memcpy(&(ppio->m_pmi),pio->m_pmi,sizeof(struct mfs_inode));
 		return MFS_RESULT_DONE;
 	}
-	ppio->m_index --;
+	ppio->exparam.m_index --;
 	return MFS_RESULT_CONTINUE;
 }
 
@@ -678,6 +547,9 @@ mfs_result mfs_ex_updatefsinode(struct itemdata *pdir,_ci struct mfs_func_param_
 
 		if (MFS_EX_UPDATE_LATIME&ppio->exparam.update_cmd)
 			pio->m_pmi->t_lastaccess = ppio->m_private.m_new->t_lastaccess;
+
+		ppio->m_clust = pio->m_clust;
+
 		return MFS_RESULT_WRITEBACK;
 	}
 	return MFS_RESULT_CONTINUE;

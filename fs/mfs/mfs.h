@@ -73,7 +73,9 @@ struct mfs_inode
  * @ clst_cnt: 分区有多少个簇
  * @ max_clust_num: 最大簇号
  * @ clst_root: 根目录的起始簇号
+ * @ alloc_start: 分配簇的起始位置
  * @ lck_cmap: 需要访问cmap时需要上锁操作，这个成员同样会出现在文件系统中
+ * @ volum_lable: 分区标签
  */
 struct mfs_super_blk 
 {
@@ -87,6 +89,7 @@ struct mfs_super_blk
 
 	clust_t clst_root;
 
+	clust_t alloc_start;
 	struct spin_lock lck_cmap;
 	char volum_lable[K_LABLE_MAX_LEN];
 };
@@ -120,7 +123,7 @@ extern int mfs_ioctl(struct file *,int,int);
 extern int mfs_kread(struct itemdata *,_co char *,foff_t,int);
 extern int mfs_kwrite(struct itemdata *,_ci const char *,foff_t,int);
 
-extern int mfs_makeinode(struct dir *,struct mfs_func_param_io *);
+extern int mfs_makeinode(struct itemdata *,struct mfs_func_param_io *);
 extern int mfs_mknode(struct dir *,struct itemattrib *,_ci const char *);
 extern int mfs_touch(struct dir *,_co struct itemattrib *,_ci const char *);
 extern int mfs_mkdir(struct dir *,_co struct itemattrib *,_ci const char *);
