@@ -11,25 +11,16 @@ fool
 	若使用VirtualBox进行调试则需要新建一个虚拟机并将虚拟机的路径在文件 debug 中进行修改.
 
 如何编译
-	1. 编译BOOTLOADER
+1. 编译BOOTLOADER
 	>  cd fool/arch-i386
 	>  make
-	2. 编译基本库文件
+2. 编译基本库文件
 	>  cd fool/lib
 	>  make
-	3. 编译基本驱动模块
-	>  cd fool/drivers
+3. 编译内核文件
+	>  cd fool
 	>  make
-	4. 编译内存管理模块
-	>  cd fool/mm
-	>  make
-	5. 编译基本文件系统模块
-	>  cd fool/fs/mfs
-	>  make
-	6. 编译内核文件
-	>  cd fool/kernel
-	>  make alldone
-	7. 编译Init
+4. 编译Init
 	>  cd foo/app
 	>  make
 
