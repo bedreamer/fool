@@ -15,6 +15,7 @@
 #include <drivers/keyboard.h>
 #include <drivers/ide.h>
 #include <drivers/console.h>
+#include <kernel/time.h>
 
 struct seg_descriptor gdt[GDT_SIZE]={{0}};	/* 全局描述符**/
 #pragma pack(1)
@@ -74,6 +75,28 @@ void kmain()
 		kprintf("%c",keymap[(code&0xFF)*3]);
 		hlt();
 		sti();
+		time_t t = gettime();
+		date_t d = getdate();
+		char *ddd[]={
+			"",
+			"Monday",
+			"Turthday",
+			"Wednesday",
+			"Thurthday",
+			"Friday",
+			"Statuday",
+			"Sunday"
+		};
+#define BCD(d) (((d)>>4)*10+((d)&0x0F))
+		printk("%d/%d/%d %d:%d:%d %s",
+			   BCD(YEAR(d)),
+			   BCD(MONTH(d)),
+			   BCD(DAY(d)),
+			   BCD(HOUR(t)),
+			   BCD(MINI(t)),
+			   BCD(SECOND(t)),
+			   ddd[WEEKDAY(d)]
+			  );
 	}
 	/*Can't be here!*/
 }

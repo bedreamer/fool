@@ -37,6 +37,9 @@ void getsystime(struct sys_time *);
   31       23       15       7        0
  */
 #define MAKETIME(hour,min,sec) (((hour&0x000000FF)<<16)|((min&0x000000FF)<<8)|((sec&0x000000FF)))
+#define HOUR(time) (0xFF&(time>>16))
+#define MINI(time) (0xFF&(time>>8))
+#define SECOND(time) (0xFF&(time))
 
 /* 
  * date_t
@@ -46,6 +49,10 @@ void getsystime(struct sys_time *);
   31       23       15       7        0
  */
 #define MAKEDATE(year,month,day,weekday) (((year&0x000000FF)<<24)|((month&0x000000FF)<<16)|((day&0x000000FF)<<8)|((weekday&0x000000FF)))
+#define YEAR(date) (0xFF&(date>>24))
+#define MONTH(date) (0xFF&(date>>16))
+#define DAY(date) (0xFF&(date>>8))
+#define WEEKDAY(date) (0xFF&(date))
 
 time_t gettime(void);
 date_t getdate(void);

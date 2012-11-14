@@ -361,31 +361,37 @@ int mfs_rm(struct dir *pdir,_ci const char *nodename)
 	return VALID;
 }
 
+/*删除目录*/
 int mfs_rmdir(struct dir *pdir,_ci const char *nodename)
 {
 	return INVALID;
 }
 
+/*重命名节点*/
 int mfs_rename(struct dir *pdir,struct itemattrib *pitm,_ci const char *nodename)
 {
 	return INVALID;
 }
 
+/*打开目录节点*/
 int mfs_opendir(struct dir *pdir,_co struct itemdata *pitd,_ci const char *nodename)
 {
 	return INVALID;
 }
 
+/*关闭目录节点*/
 int mfs_closedir(struct dir *pdir,_ci struct itemdata *pitd)
 {
 	return INVALID;
 }
 
+/*打开文件节点*/
 int mfs_openinode(struct dir *pdir,_co struct inode *pin,_ci const char *nodename)
 {
 	return INVALID;
 }
 
+/*关闭文件节点*/
 int mfs_closeinode(struct dir *pdir,_co struct inode *pin)
 {
 	return INVALID;
@@ -614,10 +620,18 @@ mfs_result mfs_ex_updatefsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,
 	if (0!=strncmp(pin->m_name,pim->m_name,K_MAX_LEN_NODE_NAME))
 	{
 		memcpy(pin,pim,sizeof(struct mfs_inode));
-		return MFS_RESULT_DONE;
+		return MFS_RESULT_WRITEBACK;
 	}
 	return MFS_RESULT_CONTINUE;
 }
+
+/*计算目录中节点个数*/
+mfs_result mfs_ex_countinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index,void *pcouter)
+{
+	if (0!=strnlen(pin->m_name,K_MAX_LEN_NODE_NAME)) *((int*)pcouter) ++;
+	return MFS_RESULT_CONTINUE;
+}
+
 
 
 

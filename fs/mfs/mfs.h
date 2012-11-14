@@ -10,25 +10,25 @@
 #include <kernel/kmodel.h>
 #include <kernel/mm.h>
 
-#define MFS_ID					0x90
+#define MFS_ID						0x90
 /*所需最小硬盘分区大小（100M）*/
-#define MFS_NEED_MIN_SCTS		0x00032000
+#define MFS_NEED_MIN_SCTS			0x00032000
 /*文件分配表个数*/
-#define MFS_FAT_CNT				5
+#define MFS_FAT_CNT					5
 /*超级块所在块号*/
-#define MFS_SBLK_SCTNUM			1
+#define MFS_SBLK_SCTNUM				1
 /*MFS 文件系统魔数,'MFS_'*/
-#define MFS_MAGIC				0x5F53464D
+#define MFS_MAGIC					0x5F53464D
 /*簇大小固定为4K*/
-#define MFS_CLUSTER_SIZE			4096
+#define MFS_CLUSTER_SIZE				4096
 /*每个簇包含的扇区数为8*/
-#define MFS_SCTS_PERCLUSTER		8
+#define MFS_SCTS_PERCLUSTER			8
 /*CMap起始簇号常为1*/
-#define MFS_CMAP_CLUSTER		1
+#define MFS_CMAP_CLUSTER				1
 /*无效的簇号*/
-#define MFS_INVALID_CLUSTER		0
+#define MFS_INVALID_CLUSTER			0
 /*每个扇区可以有几个inode*/
-#define MFS_INODES_PER_SCT		8
+#define MFS_INODES_PER_SCT			8
 /*簇号转扇区号*/
 #define CLUSTER2SECT(clustnum) 		((clustnum)*MFS_SCTS_PERCLUSTER)
 /*节点大小*/
@@ -164,6 +164,7 @@ extern mfs_result mfs_ex_rmmfsinode(struct itemdata *,_ci struct mfs_inode *,_ci
 extern mfs_result mfs_ex_searchitem(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
 extern mfs_result mfs_ex_searchitem_ex(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
 extern mfs_result mfs_ex_updatefsinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
+extern mfs_result mfs_ex_countinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
 
 CACHE_CREATOR_ALLOC_DECLARE(struct mfs_core,cmfs)
 CACHE_CREATOR_FREE_DECLARE(struct mfs_core,cmfs)
