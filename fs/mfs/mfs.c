@@ -388,6 +388,23 @@ int mfs_closedir(struct dir *pdir,_ci struct itemdata *pitd)
 /*打开文件节点*/
 int mfs_openinode(struct dir *pdir,_co struct inode *pin,_ci const char *nodename)
 {
+	struct mfs_inode mp={{0}};
+	int index=0;
+
+	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem,&index);
+	if (VALID==result)
+	{
+		if (ITYPE_ARCHIVE!=mp.m_attrib) return INVALID;
+
+		struct mfs_core *pc = cmfs_cache_alloc();
+		if (NULL==pc) return INVALID;
+
+		memcpy(pc->i_fat,mp.i_fat,sizeof(clust_t)*MFS_FAT_CNT);
+		spinlock_init(pc->lck_i_fat);
+
+		return VALID;
+	}
 	return INVALID;
 }
 
@@ -585,12 +602,16 @@ mfs_result mfs_ex_rmmfsinode(struct itemdata *pdir,_ci struct mfs_inode *pin,_ci
 }
 
 /*搜索目录中是否存在节点*/
-mfs_result mfs_ex_searchitem(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index,void *param)
+mfs_result mfs_ex_searchitem(struct itemdata *pdir,_ci struct mfs_inode *pin,_cio struct mfs_inode *pim,int index,void *pindex)
 {
 	if (0==strnlen(pin->m_name,K_MAX_LEN_NODE_NAME))
 		return MFS_RESULT_CONTINUE;
 	if (0!=strncmp(pin->m_name,pim->m_name,K_MAX_LEN_NODE_NAME))
+	{
+		if (pindex) *((int *)pindex) ++;
 		return MFS_RESULT_CONTINUE;
+	}
+	if (pindex) *((int *)pindex) ++;
 	memcpy(pim,pin,sizeof(struct mfs_inode));
 	return MFS_RESULT_DONE;
 }

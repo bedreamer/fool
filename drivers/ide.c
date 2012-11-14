@@ -184,9 +184,12 @@ int ide_wait_status(const struct ide_ctl_ioport *ctlpt,int mask,int val,int time
 	_u64 tt=((_u64)(_u32)timeout)*1000;
 	_u64 ts=rdtsc();
 	register _u8 s=0;
-	while (rdtsc()-ts<tt){
+	
+	while (rdtsc()-ts<tt)
+	{
 		s=inb(ctlpt->reg_sc.reg_status);
-		if (val==(s&mask) ){
+		if (val==(s&mask) )
+		{
 			return 1;
 		}
 	}
