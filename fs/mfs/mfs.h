@@ -44,7 +44,18 @@
 
 struct mfs_func_param_io;
 
-/*MFS 节点信息 */
+/*MFS 节点信息 
+ * @ m_name: 节点名
+ * @ m_unused: 占位
+ * @ m_size: 表示文件或设备大小，若是文件夹则表示有目录中有多少个节点
+ * @ m_attrib: 节点属性
+ * @ m_devnum: 设备号，尽在节点属性为设备时有效
+ * @ t_create: 节点创建时间
+ * @ d_create: 节点创建日期
+ * @ t_lastaccess: 该节点最后的访问时间
+ * @ d_lastaccess: 该节点最后的访问日期
+ * @ i_fat: 节点的FAT表
+ */
 #pragma pack(1)
 struct mfs_inode 
 {
@@ -63,8 +74,8 @@ struct mfs_inode
 	 * i_fat[0] --> 一级指针直接指向数据块 1 * 4K = 4K
 	 * i_fat[1-4] --> 二级指针指向fat表 4 * 4M = 16M
 	 * 作为文件夹时
-	 * i_fat[0-4] --> 分别指向一个目录块
-	 * 最多可表示320个节点信息.
+	 * i_fat[0] --> 一个目录块
+	 * 最多可表示64个节点信息.
 	 */
 };
 #pragma pack()

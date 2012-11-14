@@ -284,6 +284,7 @@ int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *noden
 
 		mp.m_pmi.i_fat[0] = cld;
 		mp.m_pmi.m_attrib = ITYPE_DIR;
+		mp.m_pmi.m_size = 0;
 
 		result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode);
 		if (INVALID==result) goto faile;
