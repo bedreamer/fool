@@ -38,6 +38,8 @@
 /*每个目录支持的最大节点数目*/
 #define MFS_MAX_INODE_CNT_PERDIR		(320)
 
+struct mfs_func_param_io;
+
 /*MFS 节点信息 */
 #pragma pack(1)
 struct mfs_inode 
@@ -91,7 +93,6 @@ struct mfs_super_blk
 
 /*文件系统私有数据
  *@m_cluster: 该结点所在簇号.
- *@m_inum: 该节点在该簇中的索引号.
  *@m_super: 所在分区的超级块结构,该数据在挂载点的私有数据中保存
  *@m_itm: 节点的其他属性.
  *@lck_i_fat: 访问i_fat的读写锁
@@ -100,7 +101,6 @@ struct mfs_super_blk
 struct mfs_core
 {
 	clust_t m_cluster;
-	size_t  m_inum;
 	struct mfs_super_blk* m_super;
 	struct itemattrib *m_itm;
 
@@ -120,6 +120,7 @@ extern int mfs_ioctl(struct file *,int,int);
 extern int mfs_kread(struct itemdata *,_co char *,foff_t,int);
 extern int mfs_kwrite(struct itemdata *,_ci const char *,foff_t,int);
 
+extern int mfs_makeinode(struct dir *,struct mfs_func_param_io *);
 extern int mfs_mknode(struct dir *,struct itemattrib *,_ci const char *);
 extern int mfs_touch(struct dir *,_co struct itemattrib *,_ci const char *);
 extern int mfs_mkdir(struct dir *,_co struct itemattrib *,_ci const char *);
@@ -156,15 +157,60 @@ typedef int mfs_result;
 #define MFS_RESULT_CONTINUE      2	/*继续执行回调*/
 #define MFS_RESULT_WRITEBACK     3	/*将回调后的结果写回设备,后主函数返回*/
 #define MFS_RESULT_WRITEBACK_EX  4 /*将回调后的结果写回设备,后主函数继续执行*/
-typedef mfs_result (*mfs_ex_proc)(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
-extern int mfs_function(struct itemdata *,struct mfs_inode *,mfs_ex_proc,void *);
 
-extern mfs_result mfs_ex_mkmfsinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
-extern mfs_result mfs_ex_rmmfsinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
-extern mfs_result mfs_ex_searchitem(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
-extern mfs_result mfs_ex_searchitem_ex(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
-extern mfs_result mfs_ex_updatefsinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
-extern mfs_result mfs_ex_countinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
+/*扩展函数传入参数结构
+ * @ m_pmi : 当前处理的节点指针
+ * @ m_clust: 当前节点所处的簇号
+ */
+struct mfs_func_param_in
+{
+	_cio struct mfs_inode *m_pmi;
+	clust_t m_clust;
+};
+
+/* 扩展函数传入/传出参数结构.
+ * @ m_pmi : 当前处理的节点指针.
+ * @ m_clust: 返回节点所处的簇号.
+ * @ exparam:
+ *   @ m_index: 搜索时制定搜索节点的位置
+ *   @ update_cmd: 更新节点时存储更新命令
+ * @ m_private:
+ *   @ m_new: 更新节点是指向存储着新属性的mfs_inode结构
+ *   @ counter: 节点计数器
+ */
+struct mfs_func_param_io
+{
+	_cio struct mfs_inode m_pmi;
+	clust_t m_clust;
+	union
+	{
+		size_t m_index;
+		unsigned int update_cmd;
+	}exparam;
+	union
+	{
+		struct mfs_inode *m_new;
+		size_t counter;
+	}m_private;
+};
+typedef mfs_result (*mfs_ex_proc)(struct itemdata *,_ci struct mfs_func_param_in *,_cio struct mfs_func_param_io *);
+extern int mfs_function(struct itemdata *,_cio struct mfs_func_param_io *,mfs_ex_proc);
+extern mfs_result mfs_ex_mkmfsinode(struct itemdata *,_ci struct mfs_func_param_in *,_cio struct mfs_func_param_io *);
+extern mfs_result mfs_ex_rmmfsinode(struct itemdata *,_ci struct mfs_func_param_in *,_cio struct mfs_func_param_io *);
+extern mfs_result mfs_ex_searchitem(struct itemdata *,_ci struct mfs_func_param_in *,_cio struct mfs_func_param_io *);
+extern mfs_result mfs_ex_searchitem_ex(struct itemdata *,_ci struct mfs_func_param_in *,_cio struct mfs_func_param_io *);
+extern mfs_result mfs_ex_updatefsinode(struct itemdata *,_ci struct mfs_func_param_in *,_cio struct mfs_func_param_io *);
+/*可用更新命令有如下几条，此时m_param指向包含新属性的mfs_inode结构体*/
+#define MFS_EX_UPDATE_NAME        0x00000001	/*更新节点名*/
+#define MFS_EX_UPDATE_IFAT        0x00000002	/*更新FAT*/
+#define MFS_EX_UPDATE_DEVNUM      0x00000004	/*更新设备号*/
+#define MFS_EX_UPDATE_ATTRIB      0x00000008	/*更新节点属性*/
+#define MFS_EX_UPDATE_SIZE        0x00000010	/*更改节点大小*/
+#define MFS_EX_UPDATE_CDATE       0x00000020	/*更改节点创建日期*/
+#define MFS_EX_UPDATE_CTIME       0x00000040	/*更改节点创建时间*/
+#define MFS_EX_UPDATE_LADATE      0x00000080	/*更改节点最后访问日期*/
+#define MFS_EX_UPDATE_LATIME      0x00000100	/*更改节点最后访问时间*/
+extern mfs_result mfs_ex_countinode   (struct itemdata *,_ci struct mfs_func_param_in *,_cio struct mfs_func_param_io *);
 
 CACHE_CREATOR_ALLOC_DECLARE(struct mfs_core,cmfs)
 CACHE_CREATOR_FREE_DECLARE(struct mfs_core,cmfs)
