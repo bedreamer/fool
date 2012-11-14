@@ -25,11 +25,16 @@ struct fs_struct mfs_struct=
 	.umount=mfs_umount
 };
 
+CACHE_PREDEFINE(cmfs)
+CACHE_CREATOR_ALLOC_CODE(cmfs,struct mfs_core,cmfs)
+CACHE_CREATOR_FREE_CODE(cmfs,struct mfs_core,cmfs)
+
 /*-------------------------------------------------------------------------------*/
 /*文件系统初始化函数*/
 int mfs_startup()
 {
 	printk("struct mfs_inode size: %d",sizeof(struct mfs_inode));
+	CACHE_CREATOR_INIT(cmfs,struct mfs_core,64)
 	return register_fs(&mfs_struct);
 }
 
@@ -44,12 +49,26 @@ int mfs_mount(struct inode *pi,struct itemdata *proot,void ** mntprivate)
 	int result = mfsr_superblk(&(pi->i_data),&sblk);
 	if (INVALID==result) return INVALID;
 	if (MFS_MAGIC!=sblk.mfs_magic) return INVALID;
+
 	psblk = kmalloc(sizeof(struct mfs_super_blk));
 	if (NULL==psblk) return INVALID;
 
+	memcpy(psblk,&sblk,sizeof(struct mfs_super_blk));
 	spinlock_init(psblk->lck_cmap);	/*必须要初始化这个成员*/
 
 	* mntprivate = psblk;
+	
+	struct mfs_core *pc = cmfs_cache_alloc();
+	if (NULL==pc) goto faile;
+
+	pc->i_fat[0] = sblk.clst_root;
+	pc->m_cluster = sblk.clst_root;
+	pc->m_itm = &(proot->i_attrib);
+	pc->m_itm->i_type = ITYPE_DIR;
+
+	proot->i_private = pc;
+faile:
+	kfree(psblk);
 	return VALID;
 }
 
@@ -95,7 +114,7 @@ int mfs_mkfs(struct inode *pi,const char *lable)
 	msb.clst_root = MFS_CMAP_CLUSTER + cmapclusters;
 
 	char buf[SECTOR_SIZE]={0};
-	size_t i=0,j=0,remain=cmapclusters;
+	size_t i=0,j=0,remain=cmapclusters+2;/*+2 的意思是除去第一个簇和默认的根目录所占的簇*/
 	int sctnum = MFS_CMAP_CLUSTER*MFS_SCTS_PERCLUSTER;
 
 	/*初始化CMAP*/
@@ -107,11 +126,28 @@ int mfs_mkfs(struct inode *pi,const char *lable)
 		remain -= SECTOR_SIZE*sizeof(char);
 	}
 	memset(buf,0,SECTOR_SIZE);
-	for (;j<cmapclusters;j++,i ++ )
+	for (;j<cmapclusters + 2;j++,i ++ )
 	{
 		bitset(i,buf);
 	}
 	pi->i_data.f_op->kwrite(&(pi->i_data),buf,sctnum,1);
+
+	struct mfs_inode mp={{0}};
+
+	mp.d_create = getdate();
+	mp.t_create = gettime();
+	mp.d_lastaccess = mp.d_create;
+	mp.t_lastaccess = mp.t_create;
+	mp.m_attrib = ITYPE_DIR;
+	mp.m_devnum = 0;
+	mp.m_size = 0;
+	mp.i_fat[0] = msb.clst_root;
+	strncpy(mp.m_name,".",K_MAX_LEN_NODE_NAME);
+	mfsw_device_ex(&(pi->i_data),&mp,CLUSTER2SECT(msb.clst_root),0,MFS_INODESIZE);
+
+	strncpy(mp.m_name,"..",K_MAX_LEN_NODE_NAME);
+	mp.i_fat[0] = msb.clst_root;
+	mfsw_device_ex(&(pi->i_data),&mp,CLUSTER2SECT(msb.clst_root),MFS_INODESIZE,MFS_INODESIZE);
 
 	return mfsw_superblk(&(pi->i_data),&msb);
 }
@@ -216,14 +252,14 @@ int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *noden
 	mp.m_size = 0;
 	
 	pdev = &(pdir->d_data.i_root->mnt_dev->i_data);
-	sblk = ((struct mfs_core*)(pdir->i_private))->m_super;
-	pc = (struct mfs_core*)(pdir->i_private);
+	sblk = ((struct mfs_core*)(pdir->d_data.i_private))->m_super;
+	pc = (struct mfs_core*)(pdir->d_data.i_private);
 
 	clust_t cluster = mfs_alloc_cluster(pdev,sblk);
 
-	mp.m_fat[0] = cluster;
+	mp.i_fat[0] = cluster;
 
-	if (MFS_INVALID_CLUSTER==mp.m_fat[0]) return INVALID;
+	if (MFS_INVALID_CLUSTER==mp.i_fat[0]) return INVALID;
 	strncpy(mp.m_name,nodename,K_MAX_LEN_NODE_NAME);
 	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode,NULL);
 	if (INVALID==result) goto faile;
@@ -238,19 +274,19 @@ int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *noden
 		pitm->t_lastaccess = mp.t_lastaccess;
 	}
 
-	strncpy(md.m_name,".",K_MAX_LEN_NODE_NAME);
-	mp.m_fat[0] = cluster;
+	strncpy(mp.m_name,".",K_MAX_LEN_NODE_NAME);
+	mp.i_fat[0] = cluster;
 	mp.m_attrib = ITYPE_DIR;
-	mfsw_device_ex(pdev,&md,CLUSTER2SECT(cluster),0,MFS_INODESIZE);
+	mfsw_device_ex(pdev,&mp,CLUSTER2SECT(cluster),0,MFS_INODESIZE);
 
-	strncpy(md.m_name,"..",K_MAX_LEN_NODE_NAME);
-	mp.m_fat[0] = pc->m_cluster;
+	strncpy(mp.m_name,"..",K_MAX_LEN_NODE_NAME);
+	mp.i_fat[0] = pc->m_cluster;
 	mp.m_attrib = ITYPE_DIR;
-	mfsw_device_ex(pdev,&md,CLUSTER2SECT(cluster),MFS_INODESIZE,MFS_INODESIZE);
+	mfsw_device_ex(pdev,&mp,CLUSTER2SECT(cluster),MFS_INODESIZE,MFS_INODESIZE);
 
 	return VALID;
 faile:
-	mfsw_superblk(pdev,sblk,cluster);
+	mfs_free_cluster(pdev,sblk,cluster);
 	return INVALID;
 }
 
@@ -372,7 +408,6 @@ int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 /*分配一个簇*/
 clust_t mfs_alloc_cluster(struct itemdata *pdev,struct mfs_super_blk *psblk)
 {
-	char buf[SECTOR_SIZE];
 	return MFS_INVALID_CLUSTER;
 }
 

@@ -159,6 +159,9 @@ extern mfs_result mfs_ex_searchitem(struct itemdata *,_ci struct mfs_inode *,_ci
 extern mfs_result mfs_ex_searchitem_ex(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
 extern mfs_result mfs_ex_updatefsinode(struct itemdata *,_ci struct mfs_inode *,_cio struct mfs_inode *,int,void *);
 
+CACHE_CREATOR_ALLOC_DECLARE(struct mfs_core,cmfs)
+CACHE_CREATOR_FREE_DECLARE(struct mfs_core,cmfs)
+
 #endif /*_MFS_*/
 
 
