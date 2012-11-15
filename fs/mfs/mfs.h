@@ -159,6 +159,7 @@ extern int mfsw_device_ex(struct itemdata *,const _ci void *,size_t,foff_t,int);
 extern int mfsr_superblk(struct itemdata *,struct mfs_super_blk *);
 extern int mfsw_superblk(struct itemdata *,const struct mfs_super_blk *);
 
+extern void mfs_initdir(struct itemdata *,clust_t,clust_t);
 extern clust_t mfs_alloc_cluster(struct itemdata *,struct mfs_super_blk *);
 extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,clust_t);
 
@@ -170,11 +171,11 @@ extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,clust_t);
  * .NOTE 3 如果使用如下的接口进行创建操作，则需要提前检查目录中是否存在相同名称的节点.
  */
 typedef int mfs_result;
-#define MFS_RESULT_ABORT        -1	/*终止回调过程,回调函数失败,主函数返回*/
-#define MFS_RESULT_DONE          1	/*终止回调过程,回调函数成功,主函数返回*/
-#define MFS_RESULT_CONTINUE      2	/*继续执行回调*/
-#define MFS_RESULT_WRITEBACK     3	/*将回调后的结果写回设备,后主函数返回*/
-#define MFS_RESULT_WRITEBACK_EX  4 /*将回调后的结果写回设备,后主函数继续执行*/
+#define MFS_RESULT_ABORT                 -1	/*终止回调过程,回调函数失败,主函数返回*/
+#define MFS_RESULT_DONE                   1	/*终止回调过程,回调函数成功,主函数返回*/
+#define MFS_RESULT_CONTINUE               2	/*继续执行回调*/
+#define MFS_RESULT_WRITEBACK              3	/*将回调后的结果写回设备,后主函数返回*/
+#define MFS_RESULT_WRITEBACK_EX           4 	/*将回调后的结果写回设备,后主函数继续执行*/
 
 /*扩展函数传入参数结构
  * @ m_pmi : 当前处理的节点指针

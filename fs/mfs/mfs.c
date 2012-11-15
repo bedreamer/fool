@@ -7,6 +7,7 @@
 #include <kernel/mm.h>
 #include <kernel/int.h>
 #include <kernel/time.h>
+#include <kernel/kmodel.h>
 #include "mfs.h"
 
 struct file_op mfs_fop=
@@ -288,6 +289,9 @@ int mfs_mkdir(struct dir *pdir,_co struct itemattrib *pitm,_ci const char *noden
 
 		result = mfs_function(&(pdir->d_data),&mp,mfs_ex_mkmfsinode);
 		if (INVALID==result) goto faile;
+
+		clust_t subdir = ((struct mfs_core *)(pdir->d_data.i_private))->i_fat[0];
+		mfs_initdir(pdev,cld,subdir);
 		return VALID;
 faile:
 		mfs_free_cluster(pdev,sblk,cld);
@@ -348,6 +352,17 @@ int mfs_closeinode(struct dir *pdir,_co struct inode *pin)
 /*读取指定位置的属性*/
 int mfs_readitem(struct dir *pdir,_co struct itemattrib *pitm,int index)
 {
+	if (NULL==pitm) return INVALID;
+	struct mfs_func_param_io mp={{{0}}};
+
+	mp.exparam.m_index = index;
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem_ex);
+	if (VALID==result)
+	{
+		memcpy(pitm->i_name,mp.m_pmi.m_name,K_MAX_LEN_NODE_NAME);
+		load_inode_into_attrib(pitm,&(mp.m_pmi));
+		return VALID;
+	}
 	return INVALID;
 }
 
@@ -431,6 +446,23 @@ int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 	return mfsw_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
 }
 
+/*初始化目录.和..*/
+void mfs_initdir(struct itemdata *pdev,clust_t me,clust_t subdir)
+{
+	struct mfs_inode mfs_buf[MFS_INODES_PER_SCT];
+
+	memset(&mfs_buf,0,sizeof(struct mfs_inode)*MFS_INODES_PER_SCT);
+	mfs_buf[0].d_create = getdate();		mfs_buf[0].t_create = gettime();
+	mfs_buf[0].d_lastaccess = mfs_buf[0].d_create;	
+	mfs_buf[0].t_lastaccess = mfs_buf[0].t_create;
+	mfs_buf[0].m_attrib = ITYPE_DIR;		mfs_buf[0].m_devnum = 0;
+	mfs_buf[0].m_size = 0;					mfs_buf[0].i_fat[0] = me;
+	mfs_buf[0].m_name[0] = '.';
+	memcpy(&mfs_buf[1],&mfs_buf[0],sizeof(struct mfs_inode));
+	mfs_buf[1].i_fat[0] = subdir;		mfs_buf[1].m_name[1] = '.';
+	mfsw_device(pdev,mfs_buf,me);
+}
+
 /*分配一个簇*/
 clust_t mfs_alloc_cluster(struct itemdata *pdev,struct mfs_super_blk *psblk)
 {
@@ -501,6 +533,9 @@ mfs_result mfs_ex_mkmfsinode(struct itemdata *pdir,_ci struct mfs_func_param_in 
 	ppio->m_clust = pio->m_clust;
 	memcpy(pio->m_pmi,&(ppio->m_pmi),sizeof(struct mfs_inode));
 
+	/*.NOTE 在这里仅仅将目录中节点数木加1,当目录被关闭时将信息写回磁盘.*/
+	pdir->i_attrib.i_size ++;
+
 	return MFS_RESULT_WRITEBACK;
 }
 
@@ -514,8 +549,11 @@ mfs_result mfs_ex_rmmfsinode(struct itemdata *pdir,_ci struct mfs_func_param_in 
 		ppio->m_clust = pio->m_clust;
 		memcpy(&(ppio->m_pmi),pio->m_pmi,sizeof(struct mfs_inode));
 
+		/*.NOTE 在这里仅仅将目录中节点数木加1,当目录被关闭时将信息写回磁盘.*/
+		pdir->i_attrib.i_size --;
+
 		memset(pio->m_pmi,0,sizeof(struct mfs_inode));
-		return MFS_RESULT_DONE;
+		return MFS_RESULT_WRITEBACK;
 	}
 	return MFS_RESULT_CONTINUE;
 }
