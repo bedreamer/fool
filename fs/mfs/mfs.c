@@ -155,7 +155,8 @@ int mfs_close(struct file *pf,struct inode *pi)
 /*读取文件,返回读取的字节数目*/
 int mfs_read(struct file *fp,_uo char *uptr,foff_t offset,_uo foff_t *poffset,int cnt)
 {
-	return VALID;
+	if (fp->f_pi->i_data.i_attrib.i_size <= offset ) return 0;
+	return 0;
 }
 
 /*写文件,返回读取的字节数目*/
@@ -167,7 +168,8 @@ int mfs_write(struct file *fp,_ui const char *uptr,foff_t offset,_uo foff_t *pof
 /*将文件内容读入内核空间,返回读取的字节数目*/
 int mfs_kread(struct itemdata *pitd,_co char *cptr,foff_t offset,int cnt)
 {
-	return INVALID;
+	if (pitd->i_attrib.i_size <= offset ) return 0;
+	return 0;
 }
 
 /*将内核空间的数据写入文件,返回读取的字节数目*/
