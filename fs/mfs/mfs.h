@@ -69,7 +69,7 @@ struct mfs_inode
 	date_t d_create;					// 4 bytes
 	time_t t_lastaccess;				// 4 bytes
 	date_t d_lastaccess;				// 4 bytes
-	clust_t i_fat[MFS_FAT_CNT];		//20 bytes
+	clust_t i_fat[MFS_FAT_CNT];			//20 bytes
 	/* 作为文件时
 	 * i_fat[0] --> 一级指针直接指向数据块 1 * 4K = 4K
 	 * i_fat[1-4] --> 二级指针指向fat表 4 * 4M = 16M
@@ -147,8 +147,8 @@ extern int mfs_rmdir(struct dir *,_ci const char *);
 extern int mfs_rename(struct dir *,struct itemattrib *,_ci const char *);
 extern int mfs_opendir(struct dir *,_co struct itemdata *,_ci const char *);
 extern int mfs_closedir(struct dir *,struct itemdata *);
-extern int mfs_openinode(struct dir *,_co struct inode *,_ci const char *);
-extern int mfs_closeinode(struct dir *,_co struct inode *);
+extern int mfs_openinode(struct dir *,_co struct itemdata *,_ci const char *);
+extern int mfs_closeinode(struct dir *,_co struct itemdata *);
 extern int mfs_readitem(struct dir *,_co struct itemattrib *,int);
 extern int mfs_readattrib(struct dir *,_co struct itemattrib *,_ci const char *);
 

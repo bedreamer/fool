@@ -133,23 +133,9 @@ int mfs_mkfs(struct inode *pi,const char *lable)
 	{
 		bitset(i,buf);
 	}
-	pi->i_data.f_op->kwrite(&(pi->i_data),buf,sctnum,1);
+	pi->i_data.f_op->kwrite(&(pi->i_data),buf,sctnum,1);	/*写回*/
 
-	struct mfs_inode mp={{0}};
-
-	mp.d_create = getdate();
-	mp.t_create = gettime();
-	mp.d_lastaccess = mp.d_create;
-	mp.t_lastaccess = mp.t_create;
-	mp.m_attrib = ITYPE_DIR;
-	mp.m_devnum = 0;
-	mp.m_size = 0;
-	mp.i_fat[0] = msb.clst_root;
-
-	strncpy(mp.m_name,".",K_MAX_LEN_NODE_NAME);
-	mfsw_device_ex(&(pi->i_data),&mp,CLUSTER2SECT(msb.clst_root),0,MFS_INODESIZE);
-	strncpy(mp.m_name,"..",K_MAX_LEN_NODE_NAME);
-	mfsw_device_ex(&(pi->i_data),&mp,CLUSTER2SECT(msb.clst_root),MFS_INODESIZE,MFS_INODESIZE);
+	mfs_initdir(&(pi->i_data),msb.clst_root,msb.clst_root);
 
 	return mfsw_superblk(&(pi->i_data),&msb);
 }
@@ -322,12 +308,55 @@ int mfs_rmdir(struct dir *pdir,_ci const char *nodename)
 /*重命名节点*/
 int mfs_rename(struct dir *pdir,struct itemattrib *pitm,_ci const char *nodename)
 {
+	if (NULL==pdir||NULL==nodename||NULL==pitm) return INVALID;
+	struct mfs_func_param_io mp={{{0}}};
+	struct mfs_inode new_inode={{0}};
+
+	strncpy(new_inode.m_name,pitm->i_name,K_MAX_LEN_NODE_NAME);
+	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	mp.exparam.update_cmd = MFS_EX_UPDATE_NAME;
+	mp.m_private.m_new = & new_inode;
+
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem);
+	if (INVALID==result) return INVALID;
+
+	if (ITYPE_ALIVE&mp.m_pmi.m_attrib)
+	{
+		result = mfs_function(&(pdir->d_data),&mp,mfs_ex_updatefsinode);
+		if (INVALID==result) return INVALID;
+		memcpy(pitm->i_name,mp.m_pmi.m_name,K_MAX_LEN_NODE_NAME);
+		load_inode_into_attrib(pitm,&(mp.m_pmi));
+		return VALID;
+	}
 	return INVALID;
 }
 
 /*打开目录节点*/
 int mfs_opendir(struct dir *pdir,_co struct itemdata *pitd,_ci const char *nodename)
 {
+	if (NULL==pitd) return INVALID;
+
+	struct mfs_func_param_io mp={{{0}}};
+
+	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem);
+	if (VALID==result&&ITYPE_DIR==mp.m_pmi.m_attrib)
+	{
+		struct mfs_core *pc = cmfs_cache_alloc();
+		if (NULL==pc) return INVALID;
+
+		memcpy(pitd->i_attrib.i_name,mp.m_pmi.m_name,K_MAX_LEN_NODE_NAME);
+		load_inode_into_attrib(&(pitd->i_attrib),&(mp.m_pmi));
+
+		memcpy(pc->i_fat,mp.m_pmi.i_fat,sizeof(clust_t)*MFS_FAT_CNT);
+		pc->m_cluster = mp.m_clust;
+		pc->m_itm = & (pitd->i_attrib);
+		/*.NOTE 这个superblok是在挂载设备时确定的*/
+		pc->m_super = ((struct mfs_core*)pdir->d_data.i_private)->m_super;
+		spinlock_init(pc->lck_i_fat);
+		pitd->i_private = (void*)pc;
+		return VALID;
+	}
 	return INVALID;
 }
 
@@ -338,13 +367,38 @@ int mfs_closedir(struct dir *pdir,_ci struct itemdata *pitd)
 }
 
 /*打开文件节点*/
-int mfs_openinode(struct dir *pdir,_co struct inode *pin,_ci const char *nodename)
+int mfs_openinode(struct dir *pdir,_co struct itemdata *pitd,_ci const char *nodename)
 {
+	if (NULL==pitd) return INVALID;
+
+	struct mfs_func_param_io mp={{{0}}};
+
+	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem);
+	if (VALID==result&&(ITYPE_ARCHIVE==mp.m_pmi.m_attrib||(ITYPE_DEVICE&mp.m_pmi.m_attrib)))
+	{
+		/*.NOTE 只有打开的是文件节点才创建私有数据*/
+		if (ITYPE_ARCHIVE==mp.m_pmi.m_attrib)
+		{
+			struct mfs_core *pc = cmfs_cache_alloc();
+			if (NULL==pc) return INVALID;
+			memcpy(pc->i_fat,mp.m_pmi.i_fat,sizeof(clust_t)*MFS_FAT_CNT);
+			pc->m_cluster = mp.m_clust;
+			pc->m_itm = & (pitd->i_attrib);
+			/*.NOTE 这个superblok是在挂载设备时确定的*/
+			pc->m_super = ((struct mfs_core*)pdir->d_data.i_private)->m_super;
+			spinlock_init(pc->lck_i_fat);
+			pitd->i_private = (void*)pc;
+		}
+		memcpy(pitd->i_attrib.i_name,mp.m_pmi.m_name,K_MAX_LEN_NODE_NAME);
+		load_inode_into_attrib(&(pitd->i_attrib),&(mp.m_pmi));
+		return VALID;
+	}
 	return INVALID;
 }
 
 /*关闭文件节点*/
-int mfs_closeinode(struct dir *pdir,_co struct inode *pin)
+int mfs_closeinode(struct dir *pdir,_ci struct itemdata *pitd)
 {
 	return INVALID;
 }
@@ -460,7 +514,7 @@ void mfs_initdir(struct itemdata *pdev,clust_t me,clust_t subdir)
 	mfs_buf[0].m_name[0] = '.';
 	memcpy(&mfs_buf[1],&mfs_buf[0],sizeof(struct mfs_inode));
 	mfs_buf[1].i_fat[0] = subdir;		mfs_buf[1].m_name[1] = '.';
-	mfsw_device(pdev,mfs_buf,me);
+	mfsw_device(pdev,mfs_buf,CLUSTER2SECT(me));
 }
 
 /*分配一个簇*/
@@ -474,6 +528,7 @@ void mfs_free_cluster(struct itemdata *pdev,struct mfs_super_blk *psblk,clust_t 
 {
 }
 
+/*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 /*遍历目录中的每一个节点直到回调函数要求退出或遍历完每个节点*/
 int mfs_function(struct itemdata *pdir,_cio struct mfs_func_param_io *pio,mfs_ex_proc mfs_func)
 {
@@ -622,6 +677,7 @@ mfs_result mfs_ex_updatefsinode(struct itemdata *pdir,_ci struct mfs_func_param_
 
 		ppio->m_clust = pio->m_clust;
 
+		memcpy(&ppio->m_pmi,pio->m_pmi,sizeof(struct mfs_inode));
 		return MFS_RESULT_WRITEBACK;
 	}
 	return MFS_RESULT_CONTINUE;
