@@ -403,7 +403,24 @@ int mfs_opendir(struct dir *pdir,_co struct itemdata *pitd,_ci const char *noden
 /*关闭目录节点*/
 int mfs_closedir(struct dir *pdir,_ci struct itemdata *pitd)
 {
-	return INVALID;
+	if (ITYPE_DIR!=pitd->i_attrib.i_type) return INVALID;
+	pitd->i_attrib.d_lastaccess = getdate();
+	pitd->i_attrib.t_lastaccess = gettime();
+	struct mfs_func_param_io mp={{{0}}};
+
+	memcpy(mp.m_pmi.m_name,pitd->i_attrib.i_name,K_MAX_LEN_NODE_NAME);
+	memcpy(mp.m_pmi.i_fat,((struct mfs_core*)(pitd->i_private))->i_fat,sizeof(clust_t)*MFS_FAT_CNT);
+	load_attrib_into_inode(&(mp.m_pmi),&(pitd->i_attrib));
+
+	mp.exparam.update_cmd |= MFS_EX_UPDATE_IFAT;
+	mp.exparam.update_cmd |= MFS_EX_UPDATE_LADATE;
+	mp.exparam.update_cmd |= MFS_EX_UPDATE_LATIME;
+	mp.exparam.update_cmd |= MFS_EX_UPDATE_SIZE;
+
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_updatefsinode);
+	cmfs_cache_free((struct mfs_core*)(pitd->i_private));
+	pitd->i_private = NULL;
+	return result;
 }
 
 /*打开文件节点*/
@@ -440,7 +457,24 @@ int mfs_openinode(struct dir *pdir,_co struct itemdata *pitd,_ci const char *nod
 /*关闭文件节点*/
 int mfs_closeinode(struct dir *pdir,_ci struct itemdata *pitd)
 {
-	return INVALID;
+	if (ITYPE_ARCHIVE!=pitd->i_attrib.i_type) return INVALID;
+	pitd->i_attrib.d_lastaccess = getdate();
+	pitd->i_attrib.t_lastaccess = gettime();
+	struct mfs_func_param_io mp={{{0}}};
+
+	memcpy(mp.m_pmi.m_name,pitd->i_attrib.i_name,K_MAX_LEN_NODE_NAME);
+	memcpy(mp.m_pmi.i_fat,((struct mfs_core*)(pitd->i_private))->i_fat,sizeof(clust_t)*MFS_FAT_CNT);
+	load_attrib_into_inode(&(mp.m_pmi),&(pitd->i_attrib));
+
+	mp.exparam.update_cmd |= MFS_EX_UPDATE_IFAT;
+	mp.exparam.update_cmd |= MFS_EX_UPDATE_LADATE;
+	mp.exparam.update_cmd |= MFS_EX_UPDATE_LATIME;
+	mp.exparam.update_cmd |= MFS_EX_UPDATE_SIZE;
+
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_updatefsinode);
+	cmfs_cache_free((struct mfs_core*)(pitd->i_private));
+	pitd->i_private = NULL;
+	return result;
 }
 
 /*读取指定位置的属性*/
