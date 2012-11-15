@@ -11,6 +11,7 @@ fool
 	若使用VirtualBox进行调试则需要新建一个虚拟机并将虚拟机的路径在文件 debug 中进行修改.
 
 如何编译
+
 1. 编译BOOTLOADER
 	>  cd fool/arch-i386
 	>  make
