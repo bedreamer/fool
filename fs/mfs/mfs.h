@@ -159,6 +159,7 @@ extern int mfsw_device_ex(struct itemdata *,const _ci void *,size_t,foff_t,int);
 extern int mfsr_superblk(struct itemdata *,struct mfs_super_blk *);
 extern int mfsw_superblk(struct itemdata *,const struct mfs_super_blk *);
 
+extern void mfs_freefilefat(struct itemdata *,struct mfs_super_blk *,clust_t);
 extern void mfs_initdir(struct itemdata *,clust_t,clust_t);
 extern clust_t mfs_alloc_cluster(struct itemdata *,struct mfs_super_blk *);
 extern void mfs_free_cluster(struct itemdata *,struct mfs_super_blk *,clust_t);

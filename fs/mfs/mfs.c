@@ -152,25 +152,25 @@ int mfs_close(struct file *pf,struct inode *pi)
 	return VALID; /*总是关闭成功*/
 }
 
-/*读取文件*/
+/*读取文件,返回读取的字节数目*/
 int mfs_read(struct file *fp,_uo char *uptr,foff_t offset,_uo foff_t *poffset,int cnt)
 {
 	return VALID;
 }
 
-/*写文件*/
+/*写文件,返回读取的字节数目*/
 int mfs_write(struct file *fp,_ui const char *uptr,foff_t offset,_uo foff_t *poffset,int cnt)
 {
 	return VALID;
 }
 
-/*将文件内容读入内核空间*/
+/*将文件内容读入内核空间,返回读取的字节数目*/
 int mfs_kread(struct itemdata *pitd,_co char *cptr,foff_t offset,int cnt)
 {
 	return INVALID;
 }
 
-/*将内核空间的数据写入文件*/
+/*将内核空间的数据写入文件,返回读取的字节数目*/
 int mfs_kwrite(struct itemdata *pitd,_ci const char *cptr,foff_t offset,int cnt)
 {
 	return INVALID;
@@ -296,13 +296,51 @@ faile:
 /*删除一个非文件夹节点*/
 int mfs_rm(struct dir *pdir,_ci const char *nodename)
 {
-	return INVALID;
+	struct mfs_func_param_io mp={{{0}}};
+	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem);
+	if (INVALID==result) return INVALID;
+	if (ITYPE_ARCHIVE!=mp.m_pmi.m_attrib) return INVALID;
+
+	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_rmmfsinode);
+	if (INVALID==result) return INVALID;
+
+	int i;
+	struct itemdata *pdev = &(pdir->d_data.i_root->mnt_dev->i_data);
+	struct mfs_super_blk *psblk = ((struct mfs_core*)(pdir->d_data.i_private))->m_super;
+	mfs_free_cluster(pdev,psblk,mp.m_pmi.i_fat[0]);
+
+	for (i=1;i<MFS_FAT_CNT;i++)
+	{
+		if (MFS_INVALID_CLUSTER!=mp.m_pmi.i_fat[i])
+			mfs_freefilefat(pdev,psblk,mp.m_pmi.i_fat[i]);
+	}
+	for (i=1;i<MFS_FAT_CNT;i++)
+	{
+		if (MFS_INVALID_CLUSTER!=mp.m_pmi.i_fat[i])
+			mfs_free_cluster(pdev,psblk,mp.m_pmi.i_fat[i]);
+	}
+	return VALID;
 }
 
 /*删除目录*/
 int mfs_rmdir(struct dir *pdir,_ci const char *nodename)
 {
-	return INVALID;
+	struct mfs_func_param_io mp={{{0}}};
+
+	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
+	int result = mfs_function(&(pdir->d_data),&mp,mfs_ex_searchitem);
+	if (INVALID==result) return INVALID;
+	if (ITYPE_DIR!=mp.m_pmi.m_attrib) return INVALID;
+	if (0!=mp.m_pmi.m_size) return INVALID;
+
+	result = mfs_function(&(pdir->d_data),&mp,mfs_ex_rmmfsinode);
+	if (INVALID==result) return INVALID;
+
+	struct itemdata *pdev = &(pdir->d_data.i_root->mnt_dev->i_data);
+	struct mfs_super_blk *psblk = ((struct mfs_core*)(pdir->d_data.i_private))->m_super;
+	mfs_free_cluster(pdev,psblk,mp.m_pmi.i_fat[0]);
+	return VALID;
 }
 
 /*重命名节点*/
@@ -498,6 +536,11 @@ int mfsr_superblk(struct itemdata *pdev,struct mfs_super_blk *psblk)
 int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 {
 	return mfsw_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
+}
+
+/*释放FAT表中的簇*/
+void mfs_freefilefat(struct itemdata *pdev,struct mfs_super_blk *psblk,clust_t clustnum)
+{
 }
 
 /*初始化目录.和..*/
