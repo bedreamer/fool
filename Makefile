@@ -11,10 +11,11 @@ KERNELTAG =kernel/_start.o kernel/kmain.o kernel/fool.o kernel/int.o kernel/kmod
 	kernel/schedu.o kernel/8259a.o kernel/signal.o kernel/time.o kernel/cache.o kernel/exec.o
 MMTAG =mm/kmalloc.o mm/mm.o mm/page.o
 DRIVERTAG =drivers/ide.o drivers/keymap_US.o drivers/keyboard.o drivers/console.o drivers/vga.o
-FSTAG =fs/mfs/mfs.o
+FSTAG =fs/mfs.o
 
-KFOOL : $(KERNELTAG) $(MMTAG) $(DRIVERTAG) $(FSTAG)
-	$(LD) $(KERNELTAG) $(MMTAG) $(DRIVERTAG) $(FSTAG) -s -o KFOOL -L lib/ -lcrt --Map=fool.map -Ttext=0x01001000
+KFOOL : $(KERNELTAG) $(MMTAG) $(DRIVERTAG) $(FSTAG) lib/libcrt.a
+	@ echo '    LD       KFOOL'
+	@ $(LD) $(KERNELTAG) $(MMTAG) $(DRIVERTAG) $(FSTAG) -s -o KFOOL -L lib/ -lcrt --Map=fool.map -Ttext=0x01001000
 
 image : KFOOL
 	./mkimg
@@ -22,11 +23,31 @@ image : KFOOL
 debug : image
 	./debug
 
+lib/libcrt.a : 
+	make -w -C lib
+
 %.o : %.c
-	$(CC) $(CCFLAGSEX) $(CCFLAGS) -o $@ $^
+	@ echo '    CC       $^'
+	@ $(CC) $(CCFLAGSEX) $(CCFLAGS) -o $@ $^
 
 %.o : %.s
-	$(ASM) $(ASMFLAGS) -o $@ $^
+	@ echo '    NASM     $^'
+	@ $(ASM) $(ASMFLAGS) -o $@ $^
 
 clean:
-	rm $(KERNELTAG) $(MMTAG) $(DRIVERTAG) $(FSTAG)
+	@ echo 'Remove $(KERNELTAG)'
+	@ rm  $(KERNELTAG)
+	@ echo 'Remove $(MMTAG)'
+	@ rm $(MMTAG)
+	@ echo 'Remove $(DRIVERTAG)'
+	@ rm $(DRIVERTAG)
+	@ echo 'Remove $(FSTAG)'
+	@ rm $(FSTAG)
+	@ echo 'Remove lib/libcrt.a'
+	@ rm lib/libcrt.a
+	@ echo 'Remove KFOOL'
+	@ rm KFOOL
+	@ echo 'Remove Object files....'
+	@ rm lib/*.o kernel/*.o mm/*.o fs/*.o drivers/*.o
+	
+	
