@@ -41,6 +41,10 @@
 #define MFS_MAX_FILE_SIZE			(0x01001000)
 /*每个目录支持的最大节点数目*/
 #define MFS_MAX_INODE_CNT_PERDIR		(64)
+/*每个扇区可以映射多少个簇*/
+#define MFS_MAP_CLUSTER_PERSCT        4096
+/*每个簇可以映射的簇个数*/
+#define MFS_MAP_CLUSTER_PERCLUST      32768
 
 struct mfs_func_param_io;
 
@@ -89,8 +93,11 @@ struct mfs_inode
  * @ max_clust_num: 最大簇号
  * @ clst_root: 根目录的起始簇号
  * @ alloc_start: 分配簇的起始位置
- * @ lck_cmap: 需要访问cmap时需要上锁操作，这个成员同样会出现在文件系统中
  * @ volum_lable: 分区标签
+ * @ cmap_start: cmap缓存的起始簇号,尽在内存中有效
+ * @ lck_cmap: 需要访问cmap时需要上锁操作，这个成员同样会出现在文件系统中
+ * @ cmap_buff: 该分区的簇映射表缓存，在设备挂载的时候，进行一次初始化，
+ *              仅在内存中有效
  */
 struct mfs_super_blk 
 {
@@ -105,8 +112,11 @@ struct mfs_super_blk
 	clust_t clst_root;
 
 	clust_t alloc_start;
-	struct spin_lock lck_cmap;
 	char volum_lable[K_LABLE_MAX_LEN];
+
+	clust_t cmap_start;
+	struct spin_lock lck_cmap;
+	char cmap_buff[SECTOR_SIZE];
 };
 
 /*文件系统私有数据

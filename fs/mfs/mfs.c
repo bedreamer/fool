@@ -155,7 +155,7 @@ int mfs_close(struct file *pf,struct inode *pi)
 /*读取文件,返回读取的字节数目*/
 int mfs_read(struct file *fp,_uo char *uptr,foff_t offset,_uo foff_t *poffset,int cnt)
 {
-	if (fp->f_pi->i_data.i_attrib.i_size <= offset ) return 0;
+	if (fp->f_pi->i_data.i_attrib.i_size <= offset) return 0;
 	return 0;
 }
 
@@ -318,7 +318,7 @@ int mfs_rm(struct dir *pdir,_ci const char *nodename)
 			mfs_freefilefat(pdev,psblk,mp.m_pmi.i_fat[i]);
 	}
 	for (i=1;i<MFS_FAT_CNT;i++)
-	{
+	{	/*同时需要释放二级FAT映射表*/
 		if (MFS_INVALID_CLUSTER!=mp.m_pmi.i_fat[i])
 			mfs_free_cluster(pdev,psblk,mp.m_pmi.i_fat[i]);
 	}
@@ -427,7 +427,6 @@ int mfs_closedir(struct dir *pdir,_ci struct itemdata *pitd)
 int mfs_openinode(struct dir *pdir,_co struct itemdata *pitd,_ci const char *nodename)
 {
 	if (NULL==pitd) return INVALID;
-
 	struct mfs_func_param_io mp={{{0}}};
 
 	strncpy(mp.m_pmi.m_name,nodename,K_MAX_LEN_NODE_NAME);
@@ -574,11 +573,6 @@ int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 	return mfsw_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
 }
 
-/*释放FAT表中的簇*/
-void mfs_freefilefat(struct itemdata *pdev,struct mfs_super_blk *psblk,clust_t clustnum)
-{
-}
-
 /*初始化目录.和..*/
 void mfs_initdir(struct itemdata *pdev,clust_t me,clust_t subdir)
 {
@@ -596,9 +590,22 @@ void mfs_initdir(struct itemdata *pdev,clust_t me,clust_t subdir)
 	mfsw_device(pdev,mfs_buf,CLUSTER2SECT(me));
 }
 
+/*释放FAT表中的簇*/
+void mfs_freefilefat(struct itemdata *pdev,struct mfs_super_blk *psblk,clust_t clustnum)
+{
+}
+
 /*分配一个簇*/
 clust_t mfs_alloc_cluster(struct itemdata *pdev,struct mfs_super_blk *psblk)
 {
+	get_spinlock(psblk->lck_cmap);
+	clust_t start = psblk->alloc_start;
+
+	for (;start < psblk->max_clust_num ; start ++ )
+	{
+	}
+
+	release_spinlock(psblk->lck_cmap);
 	return MFS_INVALID_CLUSTER;
 }
 
@@ -620,7 +627,6 @@ int mfs_function(struct itemdata *pdir,_cio struct mfs_func_param_io *pio,mfs_ex
 	struct mfs_inode mfs_buf[MFS_INODES_PER_SCT];
 	struct itemdata *pdev = &(pdir->i_root->mnt_dev->i_data);
 	struct mfs_func_param_in mfs_param;
-
 	int i,j,k,result;
 
 	/*这里暂时使用一个簇表示一个目录*/
@@ -650,7 +656,7 @@ int mfs_function(struct itemdata *pdir,_cio struct mfs_func_param_io *pio,mfs_ex
 						result = mfsw_device(pdev,mfs_buf,CLUSTER2SECT(pc->i_fat[i])+j);
 						if (INVALID==result) return INVALID;
 						break;
-					default: return INVALID;			/*无效的返回值将导致直接返回错误*/
+					default: return INVALID;		/*无效的返回值将导致直接返回错误*/
 				}
 			}
 		}
