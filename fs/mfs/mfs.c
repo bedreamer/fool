@@ -12,18 +12,37 @@
 
 struct file_op mfs_fop=
 {
-	.open=mfs_open,.close=mfs_close
+	.open   =  mfs_open,
+	.close  =  mfs_close,
+	.read   =  mfs_read,
+	.write  =  mfs_write,
+	.ioctl  =  NULL,
+	.kread  =  mfs_kread,
+	.kwrite =  mfs_kwrite
 };
 struct dir_op mfs_dop=
 {
-	NULL
+	.mknode    = mfs_mknode,
+	.touch     = mfs_touch,
+	.mkdir     = mfs_mkdir,
+	.rm        = mfs_rm,
+	.rename    = mfs_rename,
+	.opendir   = mfs_opendir,
+	.openinode = mfs_openinode,
+	.closedir  = mfs_closedir,
+	.closeinode= mfs_closeinode,
+	.readitem  = mfs_readitem,
+	.readattrib= mfs_readattrib
 };
 struct fs_struct mfs_struct=
 {
-	.fs_name="mfs",.fs_id=MFS_ID,
-	.d_op=&mfs_dop,.f_op=&mfs_fop,
-	.mkfs=mfs_mkfs,.mount=mfs_mount,
-	.umount=mfs_umount
+	.fs_name   =  "mfs",
+	.fs_id     =  MFS_ID,
+	.d_op      =  &mfs_dop,
+	.f_op      =  &mfs_fop,
+	.mkfs      =  mfs_mkfs,
+	.mount     =  mfs_mount,
+	.umount    =  mfs_umount
 };
 
 CACHE_PREDEFINE(cmfs)
@@ -564,13 +583,13 @@ int mfsw_device_ex(struct itemdata *pdev,const _ci void *ptr,size_t sctnum,foff_
 /*读取分区超级块信息*/
 int mfsr_superblk(struct itemdata *pdev,struct mfs_super_blk *psblk)
 {
-	return mfsr_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
+	return mfsr_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,SECTOR_SIZE);
 }
 
 /*写入分区超级块信息*/
 int mfsw_superblk(struct itemdata *pdev,const struct mfs_super_blk *psblk)
 {
-	return mfsw_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,sizeof(struct mfs_super_blk));
+	return mfsw_device_ex(pdev,psblk,MFS_SBLK_SCTNUM,0,SECTOR_SIZE);
 }
 
 /*初始化目录.和..*/
@@ -598,14 +617,6 @@ void mfs_freefilefat(struct itemdata *pdev,struct mfs_super_blk *psblk,clust_t c
 /*分配一个簇*/
 clust_t mfs_alloc_cluster(struct itemdata *pdev,struct mfs_super_blk *psblk)
 {
-	get_spinlock(psblk->lck_cmap);
-	clust_t start = psblk->alloc_start;
-
-	for (;start < psblk->max_clust_num ; start ++ )
-	{
-	}
-
-	release_spinlock(psblk->lck_cmap);
 	return MFS_INVALID_CLUSTER;
 }
 
