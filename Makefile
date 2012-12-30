@@ -11,7 +11,7 @@ KERNELTAG =kernel/_start.o kernel/kmain.o kernel/fool.o kernel/int.o kernel/kmod
 	kernel/schedu.o kernel/8259a.o kernel/signal.o kernel/time.o kernel/cache.o kernel/exec.o
 MMTAG =mm/kmalloc.o mm/mm.o mm/page.o
 DRIVERTAG =drivers/ide.o drivers/keymap_US.o drivers/keyboard.o drivers/console.o drivers/vga.o
-FSTAG =fs/mfs.o
+FSTAG =fs/mfs/mfs.o
 
 KFOOL : $(KERNELTAG) $(MMTAG) $(DRIVERTAG) $(FSTAG) lib/libcrt.a
 	@ echo '    LD       KFOOL'
