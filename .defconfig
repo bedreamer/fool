@@ -1,0 +1,18 @@
+MM-CONFIG
+	default=y
+	comment=Config MMU as build-in?
+IPC-CONFIG
+	default=Y
+	comment=Config IPC unit as build-in?
+DRIVER-CONFIG
+	default=m
+	comment=This is driver config comment?
+CONSOLE-CONFIG
+	default=M
+	comment=This means that console use as module?
+PRINTK-CONFIG
+	default=n
+	comment=Don't use printk in kernel?
+FS-CONFIG
+	default=N
+	comment=Don't use FS in kernel?
